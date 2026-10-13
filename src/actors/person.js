@@ -13,6 +13,7 @@ export class Person {
     this.vel = new THREE.Vector3();
     this.yaw = 0; this.air = false; this.swim = false; this.t = 0;
     this._c = { x: 0, y: 0, hit: false };
+    this.pose = {}; this.events = [];   // pose: attack / aim / tumble (combat), events: fall damage
   }
 
   place(bx, by, yaw = 0) {
@@ -61,6 +62,7 @@ export class Person {
       const floatY = wl - 1.25;
       if (this.pos.y < floatY) { this.pos.y += (floatY - this.pos.y) * Math.min(1, dt * 5); this.vel.y = 0; this.air = false; }
     } else if (this.pos.y <= g.z) {
+      if (this.air && this.vel.y < -12.5) this.events.push({ type: "fall", v: -this.vel.y });
       this.pos.y = g.z; this.vel.y = 0; this.air = false;
     } else if (this.pos.y > g.z + 0.25) this.air = true;
     else if (!this.air) this.pos.y = g.z;   // stick to slopes when walking down
@@ -70,6 +72,6 @@ export class Person {
   sync(dt) {
     this.mesh.position.copy(this.pos);
     this.mesh.rotation.y = this.yaw;
-    animatePerson(this.mesh, { speed: this.speed, air: this.air, swim: this.swim, dt, t: this.t });
+    animatePerson(this.mesh, { speed: this.speed, air: this.air, swim: this.swim, dt, t: this.t, ...this.pose });
   }
 }

@@ -30,7 +30,8 @@
         <div><b>F</b> 上車 / 下車</div><div><b>E / Q</b> 升檔 / 降檔</div><div><b>M</b> 自排 / 手排</div>
         <div><b>C</b> 車內 / 車後視角</div><div><b>R</b> 回到公路</div><div><b>1–0</b> 傳送到 10 個場景</div>
         <div><b>滑鼠</b> 轉動視角 · 滾輪縮放</div><div><b>G</b> 畫質</div><div><b>N</b> 音效 · <b>H</b> 說明</div>
-        <div><b>V</b> 上帝視角(自由飛行)</div><div><b>K</b> 把車叫到身邊</div><div><b>L</b> 居民 / 動物 開關</div>
+        <div><b>V</b> 上帝視角(自由飛行)</div><div><b>K</b> 叫車(並修好)</div><div><b>L</b> 居民 / 動物 開關</div>
+        <div><b>E</b> 對話 / 接任務 / 互動</div><div><b>Q</b> 換武器 · <b>左鍵/X</b> 攻擊</div><div><b>F</b> 騎動物(要馴服)</div>
       </div>
     </div>
   </div>
@@ -46,6 +47,16 @@
     <div id="dash"><canvas id="tach" width="260" height="260"></canvas><div id="dash-extra"></div></div>
     <div id="foot"></div>
     <div id="prompt"></div>
+    <div id="vignette"></div>
+    <div id="mc">
+      <div id="hearts"></div>
+      <div id="hotbar"></div>
+    </div>
+    <div id="emeralds">💎 0</div>
+    <div id="quest"><div id="quest-title"></div><div id="quest-lines"></div></div>
+    <div id="dialog"><div id="dialog-text"></div><div class="dialog-keys">E 接受任務 · 走開 取消</div></div>
+    <div id="pbar"><div id="pbar-label"></div><div class="pb"><div id="pbar-fill"></div></div></div>
+    <div id="death"><h1>你死了!</h1><p id="death-reason"></p><p>即將在公路旁重生…</p></div>
     <div id="toast"></div>
     <div id="fps"></div>
     <div id="god">
@@ -61,7 +72,10 @@
       <p><b>車輛</b>:6 速變速箱 · 700 Nm · 極速 300 km/h(電子限速)· 換檔約 0.24 秒動力中斷</p>
       <p><b>傳送</b>:1 海岸城市 · 2 沙漠公路 · 3 沙漠小鎮 · 4 大峽谷 · 5 山與湖 · 6 平原 · 7 河畔城市 · 8 阿帕拉契 · 9 海岸燈塔 · 0 東岸城市</p>
       <p><b>上帝視角</b>:V 進入/降落,WASD 飛行、E 上升、Q 下降、Shift 加速、滾輪調整速度、拖曳滑鼠轉向,左側清單點擊飛往各城市與地標</p>
-      <p><b>生物</b>:城鎮有方塊居民,各地有方塊動物(牛、豬、羊、雞、馬、羊駝、狐狸、狼、山羊、鹿、麋鹿、熊、野牛、鳥),靠近會逃跑。L 開關</p>
+      <p><b>生物</b>:城鎮有方塊居民,各地有方塊動物(牛、豬、羊、雞、馬、羊駝、狐狸、狼、山羊、鹿、麋鹿、熊、野牛、鳥),靠近會逃跑,狼和熊會主動攻擊。L 開關</p>
+      <p><b>任務</b>:城鎮裡頭上有黃色「!」的居民,靠近按 E 對話、再按 E 接受:找寵物、抓小偷、送貨、馴服動物、獵狼。公路上會隨機發生車禍,停車靠近傷者按住 E 急救。完成獲得綠寶石 💎</p>
+      <p><b>戰鬥</b>:10 顆心生命值,Q 切換 拳頭 / 鑽石劍 / 弓,左鍵(或 X)攻擊/射箭。摔落、被咬、車禍會扣血,不受傷時會自動回血,死亡後在公路旁重生</p>
+      <p><b>騎乘</b>:靠近任何動物按 F 騎上去。野生的會亂跑並把你甩下來,每次嘗試信任度都會上升,直到馴服;馴服後 WASD 控制、Shift 衝刺、Space 跳</p>
       <p>H 關閉</p>
     </div>
   </div>

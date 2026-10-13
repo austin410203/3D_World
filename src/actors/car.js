@@ -32,6 +32,7 @@ export class Car {
     this.pitch = 0; this.roll = 0; this.wheelRot = 0; this.yawRate = 0;
     this.onRoad = true; this.inWater = false; this.drift = 0; this.airborne = false;
     this.speedKmh = 0; this.events = [];
+    this.hp = 100; this.dead = false;   // damage model: crashes reduce hp, 0 = engine dead
     this._c = { x: 0, y: 0, hit: false };
   }
 
@@ -112,6 +113,7 @@ export class Car {
       if (this.gear >= 1 && vLong > VMAX - 0.6) Fdrive *= Math.max(0, (VMAX - vLong) / 0.6);   // 300 km/h governor
       if (this.throttle < 0.05) Fdrive -= Math.sign(vLong) * (35 + this.rpm * 0.012) * Math.abs(ratio) / CAR_DIM.wheelR;   // engine braking
     }
+    if (this.dead) Fdrive = 0;
     const grip = (this.onRoad ? 1.05 : 0.75) * (this.inWater ? 0.3 : 1);
     const tractionMax = grip * MASS * G * 0.62;
     if (Math.abs(Fdrive) > tractionMax) { this.drift = Math.max(this.drift, 0.4); Fdrive = Math.sign(Fdrive) * tractionMax; }
@@ -158,7 +160,7 @@ export class Car {
         const nx = px / L, nz = pz / L, vn = this.vel.x * nx + this.vel.y * nz;
         if (vn < 0) {
           this.vel.x -= nx * vn * 1.25; this.vel.y -= nz * vn * 1.25; this.vel.multiplyScalar(0.92);
-          if (-vn > 4) this.events.push('crash:' + (-vn).toFixed(1));
+          if (-vn > 4) { this.events.push('crash:' + (-vn).toFixed(1)); this.damage((-vn - 3) * 2.2); }
         }
       }
     }
@@ -207,6 +209,13 @@ export class Car {
       wh.spin.rotation.x = this.wheelRot;
     }
   }
+
+  damage(n) {
+    this.hp = Math.max(0, this.hp - n);
+    if (this.hp <= 0 && !this.dead) { this.dead = true; this.events.push("dead"); }
+  }
+
+  repair() { this.hp = 100; this.dead = false; }
 
   resetToRoad() {
     const s = this.w.nearestRouteS(this.pos.x, -this.pos.z);

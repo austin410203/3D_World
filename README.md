@@ -29,7 +29,9 @@ An open-world road trip across the USA built with three.js. You drive or walk 10
 | R | back to the highway | back to the highway |
 | 1–9, 0 | teleport to stages 1–10 | same |
 | Mouse / wheel | rotate / zoom the camera | same |
-| V / K / L | god mode / call the car / toggle residents & wildlife | |
+| V / K / L | god mode / call (and repair) the car / toggle residents & wildlife | |
+| E / Q / left click | talk / interact · switch weapon · attack | |
+| F | mount an animal (taming needed) | |
 | G / N / H | graphics quality / sound / help | |
 
 
@@ -45,6 +47,32 @@ An open-world road trip across the USA built with three.js. You drive or walk 10
   - Appalachia: deer, bears, foxes, pigs
   - Sky: gulls along the coasts, hawks over the desert, crows over the plains
 - **L** toggles residents and wildlife on or off. Everything is drawn with InstancedMesh, so each body part is a single draw call no matter how many creatures there are.
+
+
+## Minecraft-style gameplay
+- **The hero and the car** are Minecraft-style blocks with pixel textures. Highway traffic uses the same blocky style.
+- **Residents do things that make sense for where they are**:
+  - City streets: they walk the block grid (New York's 29° grid included), chat in small groups, and wait at the roadside.
+  - Parks: they jog, picnic and chat.
+  - Beach: sunbathing and strolling.
+  - Lakes and rivers: fishing.
+  - Kansas fields: farming with a hoe.
+  - Golden Gate, Gateway Arch, canyon rim, lighthouse and the red barn: taking photos.
+  - If you attack someone, people nearby panic and scatter.
+- **Quests** (yellow "!" giver in each town; E to talk, E again to accept):
+  - Find a lost pet: search inside the circle on the minimap, then E to have it follow you home.
+  - Catch a thief: chase and tackle with E, or hit him, then return the wallet.
+  - Delivery: drive to the next town before time runs out (yellow light beam marks the drop-off).
+  - Tame a horse or llama.
+  - Hunt 3 wolves.
+  - Rewards are emeralds 💎.
+- **Highway accidents**: wrecked cars on fire with smoke, traffic cones, and stopped traffic queuing behind. Pull over, then hold E next to the injured person to give first aid.
+- **Weapons and health**:
+  - 10 hearts of health.
+  - Q switches between fist, diamond sword and bow; left click (or X) attacks or fires an arrow, and arrows follow a ballistic arc.
+  - Falls, bites, being hit by a car and car crashes all cost health. Health regenerates when you stop taking damage, and you respawn beside the highway after dying.
+  - The car takes damage and smokes when hurt; at 0 the engine catches fire and dies. K calls a new car.
+- **Ride any animal (F)**: untamed animals bolt, buck, and throw you off. Each attempt raises their trust until they're tamed, after which WASD steers, Shift sprints and Space jumps. A horse gallops at up to 68 km/h. Wolves and bears attack you if you get close on foot.
 
 ## Car physics
 - Twin-turbo V8 torque curve (700 Nm), 900–8,000 rpm, rev limiter

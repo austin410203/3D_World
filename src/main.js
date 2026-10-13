@@ -16,7 +16,11 @@ import { HUD } from './hud.js';
 import { EngineAudio } from './audio.js';
 import { GodMode, PLACES } from './god.js';
 import { Residents } from './life/residents.js';
-import { Wildlife } from './life/wildlife.js';
+import { Wildlife, NAMES } from './life/wildlife.js';
+import { Particles } from './particles.js';
+import { Combat, WEAPONS } from './combat.js';
+import { Ride } from './actors/ride.js';
+import { Quests } from './quests.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
@@ -117,39 +121,118 @@ async function main() {
     hud.toast(`傳送到 Stage ${st.stage}:${st.title}`);
   }
 
+  // ---- survival systems
+  const particles = new Particles(scene);
+  const combat = new Combat(scene, world, person);
+  const ride = new Ride(world, wildlife, person);
+  const quests = new Quests(scene, world, residents, wildlife, traffic, particles);
+  Object.assign(window.__game, { combat, ride, quests, particles });
+  let deadT = 0, deadReason = '';
+  const aim = new THREE.Vector3();
+  const v3 = (bx, by, z) => new THREE.Vector3(bx, z, -by);
+
+  function die(reason) {
+    if (mode === 'dead') return;
+    if (ride.active) ride.dismount();
+    if (mode === 'car') { mode = 'foot'; person.place(car.pos.x + Math.cos(car.yaw) * 2.3, -(car.pos.z - Math.sin(car.yaw) * 2.3), car.yaw); }
+    person.mesh.visible = true; person.pose.tumble = 1;
+    mode = 'dead'; deadT = 3.5; deadReason = reason || '';
+    const lost = Math.floor(quests.emeralds * 0.1); quests.emeralds -= lost;
+    if (lost) deadReason += ` · 掉了 ${lost} 顆綠寶石`;
+  }
+  function respawn() {
+    const s = world.nearestRouteS(person.pos.x, -person.pos.z), r = world.routeAt(s);
+    person.place(r.x - r.ty * -12, r.y + r.tx * -12, 0); person.pose.tumble = 0;
+    combat.hp = combat.maxHp; mode = 'foot'; rig.init = false;
+    hud.toast('重生了。小心野狼和熊!', 3);
+  }
+  function nearestAnimal(maxD) {
+    let best = null, bd = maxD;
+    for (const e of wildlife.members()) {
+      if (e.m.ridden) continue;
+      const d = Math.hypot(e.m.bx - person.pos.x, e.m.by + person.pos.z) - e.s.body[0] / 32;
+      if (d < bd) { bd = d; best = e.m; }
+    }
+    return best;
+  }
+  function attackInput() {
+    if (!(input.hit('Mouse0') || input.hit('KeyX'))) return;
+    camera.getWorldDirection(aim); aim.y += 0.04; aim.normalize();
+    if (mode === 'foot') person.yaw = rig.yaw + Math.PI;           // face where the camera looks
+    combat.attack(person.yaw, aim, gatherTargets());
+  }
+  let targetsCache = null;
+  function gatherTargets() {
+    if (!targetsCache) targetsCache = [...residents.targets(), ...wildlife.targets(lifeEvents)];
+    return targetsCache;
+  }
+  let lifeEvents = [];
+
   let t = 0;
   function tick(dt, draw = true) {
-    t += dt;
+    t += dt; targetsCache = null; lifeEvents = [];
     fps += (1 / Math.max(dt, 1e-3) - fps) * 0.05;
     const mv = input.move();
+    let prompt = '';
 
     // ---- global keys
     if (input.hit('KeyH')) $('help').classList.toggle('show');
     if (input.hit('KeyN')) { audio.muted = !audio.muted; hud.toast(audio.muted ? '音效關閉' : '音效開啟'); }
     if (input.hit('KeyG')) { quality = (quality + 1) % 3; applyQuality(); hud.toast(`畫質:${qualities[quality].name}`); }
-    for (let k = 0; k < 10; k++) if (input.hit(k === 9 ? 'Digit0' : 'Digit' + (k + 1))) teleport(k);
-
+    if (mode !== 'dead' && mode !== 'ride') for (let k = 0; k < 10; k++) if (input.hit(k === 9 ? 'Digit0' : 'Digit' + (k + 1))) teleport(k);
     const carBX = car.pos.x, carBY = -car.pos.z;
-    if (input.hit('KeyV')) { if (mode === 'god') exitGod(); else if (mode === 'car' && car.speedKmh > 10) hud.toast('先停車再進入上帝視角'); else enterGod(); }
+    if (input.hit('KeyV') && mode !== 'dead') {
+      if (mode === 'god') exitGod();
+      else if (mode === 'car' && car.speedKmh > 10) hud.toast('先停車再進入上帝視角');
+      else { if (ride.active) ride.dismount(); enterGod(); }
+    }
     if (input.hit('KeyL')) { residents.enabled = wildlife.enabled = !residents.enabled; hud.toast(residents.enabled ? '居民 / 動物:開' : '居民 / 動物:關'); }
-    if (mode === 'god') {
+
+    if (mode === 'dead') {
+      deadT -= dt; person.sync(dt);
+      if (deadT <= 0) respawn();
+      rig.updateFoot(dt, person, input);
+    } else if (mode === 'god') {
       const anyKey = input.down('KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyQ', 'Space');
       god.update(dt, input, anyKey);
       $('god-alt').textContent = `高度 ${Math.round(god.altitude())} m · 速度 ${Math.round(god.vel.length() * 3.6)} km/h`;
     } else if (mode === 'foot') {
-      if (input.hit('KeyK')) {   // call the car: park it beside the player
+      if (input.hit('KeyK')) {   // call (and repair) the car: park it beside the player
         const fx = Math.sin(person.yaw), fz = Math.cos(person.yaw);
         const bx = person.pos.x + fz * 4 + fx * 3, by = -(person.pos.z - fx * 4 + fz * 3);
-        car.place(bx, by, Math.atan2(-fz, fx)); hud.toast('車子已經到了');
+        car.place(bx, by, Math.atan2(-fz, fx)); car.repair(); hud.toast('車子已經到了(已修好)');
       }
+      if (input.hit('KeyQ')) { combat.cycle(); hud.toast(`${combat.weapon.icon} ${combat.weapon.name}`, 1); }
+      attackInput();
       person.update(dt, mv, rig.yaw);
+      for (const e of person.events) if (e.type === 'fall' && e.v > 13) combat.damage(Math.round((e.v - 13) * 1.3), '摔死了');
+      person.events.length = 0;
       const dCar = Math.hypot(person.pos.x - car.pos.x, person.pos.z - car.pos.z);
-      hud.prompt(dCar < 5.5 ? '按 F 上車' : '');
-      if (input.hit('KeyF') && dCar < 5.5) {
-        mode = 'car'; person.mesh.visible = false; rig.freeLook = 0; hud.prompt('');
-        hud.toast('E/Q 升降檔 · M 手自排 · Space 手煞車 · C 視角 · R 回公路', 5);
+      const an = nearestAnimal(2.8);
+      if (an) prompt = `按 F 騎上${NAMES[an.kind]}${an.tamed ? '(已馴服)' : '(野生:會試圖把你甩下來)'}`;
+      else if (dCar < 5.5) prompt = car.dead ? '車子壞了 · 按 K 叫一台新車' : '按 F 上車';
+      if (input.hit('KeyF')) {
+        if (an) { ride.mount(an); mode = 'ride'; hud.toast(an.tamed ? `騎上${NAMES[an.kind]}:WASD 控制 · Shift 衝刺 · Space 跳 · F 下來` : `騎上野生${NAMES[an.kind]}…撐住!`, 3); }
+        else if (dCar < 5.5 && !car.dead) {
+          mode = 'car'; person.mesh.visible = false; rig.freeLook = 0;
+          hud.toast('E/Q 升降檔 · M 手自排 · Space 手煞車 · C 視角 · R 回公路', 5);
+        }
       }
       if (input.hit('KeyR')) { const s = world.nearestRouteS(person.pos.x, -person.pos.z), r = world.routeAt(s); person.place(r.x - r.ty * -12, r.y + r.tx * -12, 0); }
+      rig.updateFoot(dt, person, input);
+    } else if (mode === 'ride') {
+      if (input.hit('KeyQ')) { combat.cycle(); hud.toast(`${combat.weapon.icon} ${combat.weapon.name}`, 1); }
+      attackInput();
+      if (input.hit('KeyF')) { ride.dismount(); mode = 'foot'; }
+      else {
+        ride.update(dt, mv);
+        for (const e of ride.events) {
+          if (e.type === 'tamed') { hud.toast(`❤ 成功馴服${NAMES[e.kind]}!現在可以用 WASD 控制`, 4); for (let k = 0; k < 8; k++) particles.emit('heart', v3(e.m.bx, e.m.by, e.m.z + 2)); quests.onEvent(e); }
+          if (e.type === 'thrown') { hud.toast(`被${NAMES[e.kind]}甩下來了!信任度 ${Math.round(e.temper)}%,再試一次`, 3); combat.damage(2, `被${NAMES[e.kind]}甩下來`); }
+        }
+        ride.events.length = 0;
+        if (!ride.active) mode = 'foot';
+      }
       rig.updateFoot(dt, person, input);
     } else {
       if (input.hit('KeyE')) car.shift(1);
@@ -158,6 +241,15 @@ async function main() {
       if (input.hit('KeyC')) rig.mode = rig.mode === 'chase' ? 'hood' : 'chase';
       if (input.hit('KeyR')) { car.resetToRoad(); rig.init = false; }
       car.update(dt, mv);
+      // wrecks of a highway accident are solid
+      for (const wk of quests.accident?.wrecks || []) {
+        const dx = car.pos.x - wk.bx, dy = -car.pos.z - wk.by, d = Math.hypot(dx, dy);
+        if (d < wk.r + 1.6 && d > 1e-3) {
+          const push = wk.r + 1.6 - d; car.pos.x += dx / d * push; car.pos.z -= dy / d * push;
+          if (car.speed > 4) { car.damage(car.speed * 1.5); car.events.push('crash:' + car.speed.toFixed(1)); }
+          car.vel.multiplyScalar(0.3);
+        }
+      }
       if (input.hit('KeyF')) {
         if (car.speedKmh < 10) {
           mode = 'foot';
@@ -167,9 +259,19 @@ async function main() {
         } else hud.toast('先停車再下車');
       }
       for (const e of car.events) {
-        if (e.startsWith('crash')) hud.toast('碰撞!', 1);
+        if (e.startsWith('crash')) {
+          const v = parseFloat(e.split(':')[1]); hud.toast(`碰撞!車況 ${Math.round(car.hp)}%`, 1);
+          if (v > 14) combat.damage(Math.round((v - 14) * 0.5), '車禍身亡');
+          const ep = car.mesh.userData.engine.getWorldPosition(new THREE.Vector3());
+          particles.emit('spark', ep, 10);
+        }
+        if (e === 'dead') hud.toast('引擎壞掉了!下車按 K 叫新車', 4);
       }
       car.events.length = 0;
+      if (car.hp < 45 && Math.random() < dt * (car.dead ? 14 : 5)) {
+        const ep = car.mesh.userData.engine.getWorldPosition(new THREE.Vector3());
+        particles.emit(car.dead && Math.random() < 0.5 ? 'fire' : 'smoke', ep);
+      }
       rig.updateCar(dt, car, input);
     }
 
@@ -179,31 +281,49 @@ async function main() {
     const routeS = world.nearestRouteS(pBX, pBY);
     traffic.update(dt, pBX, pBY, routeS, mode === 'car' ? { x: pBX, y: pBY } : null);
     for (const tc of traffic.cars) {
-      if (mode === 'god') break;
+      if (mode === 'god' || mode === 'dead') break;
       const dx = pBX - tc.bx, dy = pBY - tc.by, d = Math.hypot(dx, dy);
       const r = mode === 'car' ? 2.6 : 1.5;
       if (d < r && d > 1e-3) {
         const push = (r - d);
-        if (mode === 'car') { car.pos.x += dx / d * push; car.pos.z -= dy / d * push; car.vel.multiplyScalar(0.6); hud.toast('碰撞!', 1); }
-        else { person.pos.x += dx / d * push; person.pos.z -= dy / d * push; }
+        if (mode === 'car') { car.pos.x += dx / d * push; car.pos.z -= dy / d * push; const v = car.speed; car.vel.multiplyScalar(0.6); if (v > 5) { car.damage(v * 0.8); hud.toast(`碰撞!車況 ${Math.round(car.hp)}%`, 1); } }
+        else { person.pos.x += dx / d * push; person.pos.z -= dy / d * push; if ((tc.v || 0) > 8) combat.damage(Math.round(tc.v * 0.6), '被車撞了'); }
       }
     }
 
     // ---- residents & wildlife around the focus point
     const camAlt = Math.max(0, camera.position.y - Math.max(0, world.H(camera.position.x, -camera.position.z)));
     lifeOrigin.set(Math.round(pBX / 500) * 500, 0, -Math.round(pBY / 500) * 500);
-    const threat = mode === 'god' ? null : { bx: pBX, by: pBY, car: mode === 'car', speed: mode === 'car' ? car.speed : person.speed };
+    const threat = mode === 'god' ? null : { bx: pBX, by: pBY, car: mode === 'car', foot: mode === 'foot', speed: mode === 'car' ? car.speed : person.speed };
     const lifeAlt = mode === 'god' ? camAlt : 0;
     const ev = [...residents.update(dt, pBX, pBY, lifeAlt, lifeOrigin, threat), ...wildlife.update(dt, pBX, pBY, lifeAlt, lifeOrigin, threat)];
-    for (const e of ev) {
+    combat.update(dt, mode === 'god' ? [] : gatherTargets());
+    for (const e of [...ev, ...lifeEvents]) {
       if (e.type === 'hit-person') { car.vel.multiplyScalar(0.85); hud.toast('小心行人!', 1.5); }
-      if (e.type === 'hit-animal') { car.vel.multiplyScalar(e.big ? 0.45 : 0.85); hud.toast(`撞到${{ cow: '牛', bison: '野牛', elk: '麋鹿', bear: '熊', horse: '馬', deer: '鹿', pig: '豬', sheep: '羊', chicken: '雞', llama: '羊駝', fox: '狐狸', wolf: '狼', goat: '山羊' }[e.kind] || '動物'}了!`, 1.5); }
+      if (e.type === 'hit-animal') { car.vel.multiplyScalar(e.big ? 0.45 : 0.85); if (e.big) car.damage(12); hud.toast(`撞到${NAMES[e.kind] || '動物'}了!`, 1.5); }
+      if (e.type === 'bite') combat.damage(e.dmg, `被${NAMES[e.kind]}咬死了`);
+      if (e.type === 'kill') { quests.onEvent(e); particles.emit('dust', v3(e.bx, e.by, e.z + 0.5), 10); if (!['wolf', 'bear', 'fox'].includes(e.kind)) { combat.heal(2); hud.toast(`獲得生肉,回復 1 顆心`, 1.5); } }
     }
+    for (const e of combat.events) {
+      if (e.type === 'dead') die(e.reason);
+      if (e.type === 'hit') particles.emit('hit', v3(e.target.ref.bx, e.target.ref.by, e.target.ref.z + 1.2), 8);
+    }
+    combat.events.length = 0;
     if (mode === 'god') {
       const c = wildlife.count();
       $('life-count').textContent = `附近:居民 ${residents.list.length} · 動物 ${c.animals} · 鳥 ${c.birds}`;
       scene.fog.near = 2500 + camAlt * 2; scene.fog.far = 42000 + camAlt * 12;
     } else if (scene.fog.near !== 2500) { scene.fog.near = 2500; scene.fog.far = 42000; }
+
+    // ---- quests & events
+    const vt = mode === 'car' ? car.vel.x * world.routeAt(routeS).tx - car.vel.y * world.routeAt(routeS).ty : 1;
+    const msgs = quests.update(dt, { mode, bx: pBX, by: pBY, z: focus.y, routeS, carSpeed: car.speed, travelDir: vt >= 0 ? 1 : -1,
+      onRoad: car.onRoad, interact: (mode === 'foot' || mode === 'ride') && input.hit('KeyE'), interactHeld: mode === 'foot' && input.down('KeyE') });
+    for (const [m, d] of msgs) hud.toast(m, d);
+    for (const e of quests.events) if (e.type === 'quest-done') combat.heal(20);
+    if (quests.prompt) prompt = quests.prompt;
+    quests.render(lifeOrigin);
+    particles.update(dt, lifeOrigin);
 
     // ---- world streaming
     const p = focus;
@@ -215,10 +335,20 @@ async function main() {
     water.update(t);
     audio.update(car, mode === 'car');
 
+    // ---- HUD
+    hud.prompt(mode === 'dead' || mode === 'god' ? '' : prompt);
     const heading = mode === 'god' ? Math.atan2(Math.cos(god.yaw), -Math.sin(god.yaw))
       : mode === 'car' ? Math.atan2(-Math.cos(car.yaw), Math.sin(car.yaw)) : Math.atan2(-Math.cos(person.yaw), Math.sin(person.yaw));
-    hud.update(dt, { mode, car, person, bx: pBX, by: pBY, routeS, fps, run: mv.run, heading, carBX, carBY,
-                     span: mode === 'god' ? Math.min(30000, 1500 + camAlt * 6) : null });
+    const markers = quests.markers();
+    for (const e of wildlife.members()) if (e.m.tamed && !e.m.ridden) markers.push({ bx: e.m.bx, by: e.m.by, type: 'tamed' });
+    const footText = mode === 'ride' && ride.m ? `騎乘${ride.name} · ${ride.m.tamed ? '已馴服' : '野生!'} · ${Math.round(Math.abs(ride.m.speed) * 3.6)} km/h` : null;
+    hud.update(dt, { mode: mode === 'dead' ? 'foot' : mode, car, person, bx: pBX, by: pBY, routeS, fps, run: mv.run, heading, carBX, carBY, markers, footText,
+                     span: mode === 'god' ? Math.min(30000, 1500 + camAlt * 6) : mode === 'ride' ? 1800 : null });
+    let pbar = null;
+    if (mode === 'ride' && ride.m && !ride.m.tamed) pbar = { label: `馴服${ride.name}中… 信任度 ${Math.round(ride.m.temper)}%`, v: ride.m.temper / 100 };
+    if (quests.accident && quests.accident.progress > 0 && !quests.accident.helped) pbar = { label: '急救中…', v: quests.accident.progress };
+    hud.survival({ mode, combat, weapons: WEAPONS, emeralds: quests.emeralds, tracker: quests.tracker(pBX, pBY), dialog: quests.dialog, pbar,
+                   dead: mode === 'dead' ? deadReason || '你倒下了' : null });
     input.endFrame();
     if (draw) renderer.render(scene, camera);
   }

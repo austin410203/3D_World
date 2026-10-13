@@ -99,48 +99,72 @@ function birdParts(b) {
 
 const inZone = (z, bx) => z.some(([a, b]) => bx >= a && bx < b);
 
+// pets used by quests (never spawn in the wild)
+SPECIES.dog = { body: [6, 6, 11], leg: [2, 7], head: [6, 6, 5], c: 0xc8a070, c2: 0xb08a5a, zones: [], herd: [1, 1], walk: 1.3, run: 7, fear: 0, w: 0,
+  tail: [2, 2, 7, 0xc8a070], extra: { head: (h) => [B(3, 3, 3, 0, h.y - 1.5, h.z + 1.5, hex(0x8a6a4a)), B(2, 3, 1, 2.2, h.y + 2, h.z - 4, hex(0x8a6a4a)), B(2, 3, 1, -2.2, h.y + 2, h.z - 4, hex(0x8a6a4a)), B(6.4, 1, 1, 0, h.y - 3, h.z - 3, hex(0xd02020))] } };
+SPECIES.cat = { body: [4, 4, 10], leg: [2, 5], head: [5, 4, 5], c: 0xe39a3b, c2: 0xe39a3b, zones: [], herd: [1, 1], walk: 1.0, run: 7, fear: 0, w: 0,
+  tail: [1, 1, 8, 0xe39a3b], extra: { head: (h) => [B(1.5, 2, 1, 1.6, h.y + 3, h.z - 3, hex(0xe39a3b)), B(1.5, 2, 1, -1.6, h.y + 3, h.z - 3, hex(0xe39a3b)), B(2, 1, 1, 0, h.y - 1, h.z + 0.4, hex(0xf2c0a0))] } };
+export { SPECIES, quadParts };
+
+// riding: top speed (m/s) and hit points per species
+export const RIDE = { cow: 7, pig: 6, sheep: 6, chicken: 4, horse: 19, llama: 11, fox: 10, wolf: 13, goat: 9, deer: 15, elk: 15, bear: 10, bison: 12, dog: 8, cat: 7 };
+const HP = { cow: 10, pig: 10, sheep: 8, chicken: 4, horse: 15, llama: 15, fox: 10, wolf: 12, goat: 10, deer: 12, elk: 20, bear: 30, bison: 30 };
+const NAMES = { cow: '牛', pig: '豬', sheep: '羊', chicken: '雞', horse: '馬', llama: '羊駝', fox: '狐狸', wolf: '狼', goat: '山羊', deer: '鹿', elk: '麋鹿', bear: '熊', bison: '野牛', dog: '狗', cat: '貓' };
+export { NAMES };
+const AGGRO = { bear: 10, wolf: 24 };         // predators attack a person on foot within this range
+
 export class Wildlife {
   constructor(scene, world) {
     this.w = world; this.herds = []; this.flocks = []; this.enabled = true;
     this.rigs = {};
-    for (const [k, s] of Object.entries(SPECIES)) this.rigs[k] = new PartRig(scene, quadParts(s), 90);
+    for (const [k, s] of Object.entries(SPECIES)) if (s.zones.length) this.rigs[k] = new PartRig(scene, quadParts(s), 90);
     this.brigs = {};
     for (const [k, b] of Object.entries(BIRDS)) this.brigs[k] = new PartRig(scene, birdParts(b), 60, { shadow: false });
     this.towns = Object.values(world.meta.towns).map((t) => ({ cx: t.center[0], cy: t.center[1], rx: t.radius[0] * 1.25, ry: t.radius[1] * 1.25 }));
     this._c = { x: 0, y: 0, hit: false };
-    this.spawnT = 0;
+    this.spawnT = 0; this.t = 0;
   }
 
-  okGround(bx, by) {
+  okGround(bx, by, allowTown = false) {
     const w = this.w;
     if (w.waterLevel(bx, by) !== null) return false;
-    for (const t of this.towns) if (((bx - t.cx) / t.rx) ** 2 + ((by - t.cy) / t.ry) ** 2 < 1) return false;
+    if (!allowTown) for (const t of this.towns) if (((bx - t.cx) / t.rx) ** 2 + ((by - t.cy) / t.ry) ** 2 < 1) return false;
     const e = 3, sl = Math.hypot(w.H(bx + e, by) - w.H(bx - e, by), w.H(bx, by + e) - w.H(bx, by - e)) / (2 * e);
     if (sl > 0.75) return false;
-    if (w.collide(bx, by, 1.0, w.H(bx, by), w.H(bx, by) + 1.5, this._c).hit) return false;
+    if (w.collide(bx, by, 0.8, w.H(bx, by) + 0.2, w.H(bx, by) + 1.5, this._c).hit) return false;
     return true;
   }
 
-  spawnHerd(fx, fy) {
-    const a = Math.random() * Math.PI * 2, d = 220 + Math.random() * 520;
-    const bx = fx + Math.cos(a) * d, by = fy + Math.sin(a) * d;
-    const cands = Object.entries(SPECIES).filter(([, s]) => inZone(s.zones, bx));
-    if (!cands.length) return;
-    let tot = cands.reduce((t, [, s]) => t + s.w, 0), r = Math.random() * tot, kind = cands[0][0];
-    for (const [k, s] of cands) { r -= s.w; if (r <= 0) { kind = k; break; } }
+  newMember(kind, bx, by, heading) {
     const s = SPECIES[kind];
-    if (!this.okGround(bx, by) || this.w.roadInfo(bx, by)?.d < 20) return;
+    return { kind, bx, by, z: this.w.H(bx, by), yaw: heading + (Math.random() - 0.5) * 1.2, phase: Math.random() * 6,
+      state: Math.random() < 0.6 ? 'graze' : 'walk', timer: 2 + Math.random() * 8, speed: 0, head: 0, vy: 0,
+      scale: 0.9 + Math.random() * 0.2, color: s.tints ? s.tints[(Math.random() * s.tints.length) | 0] : 0xffffff,
+      hp: HP[kind] || 10, temper: Math.random() * 35, tamed: false, ridden: false, buck: 0, atkCd: 0 };
+  }
+
+  spawnHerd(fx, fy, force = null, dmin = 220, dmax = 740) {
+    const a = Math.random() * Math.PI * 2, d = dmin + Math.random() * (dmax - dmin);
+    const bx = fx + Math.cos(a) * d, by = fy + Math.sin(a) * d;
+    let kind = force;
+    if (!kind) {
+      const cands = Object.entries(SPECIES).filter(([, s]) => inZone(s.zones, bx));
+      if (!cands.length) return null;
+      let tot = cands.reduce((t, [, s]) => t + s.w, 0), r = Math.random() * tot; kind = cands[0][0];
+      for (const [k, s] of cands) { r -= s.w; if (r <= 0) { kind = k; break; } }
+    }
+    const s = SPECIES[kind];
+    if (!this.okGround(bx, by) || this.w.roadInfo(bx, by)?.d < 20) return null;
     const n = s.herd[0] + Math.floor(Math.random() * (s.herd[1] - s.herd[0] + 1));
     const heading = Math.random() * Math.PI * 2, members = [];
     for (let i = 0; i < n; i++) {
       const mx = bx + (Math.random() - 0.5) * (6 + n * 2.5), my = by + (Math.random() - 0.5) * (6 + n * 2.5);
-      if (!this.okGround(mx, my)) continue;
-      members.push({ bx: mx, by: my, z: this.w.H(mx, my), yaw: heading + (Math.random() - 0.5) * 1.2, phase: Math.random() * 6,
-        state: Math.random() < 0.6 ? 'graze' : 'walk', timer: 2 + Math.random() * 8, speed: 0, head: 0,
-        scale: 0.9 + Math.random() * 0.2,
-        color: s.tints ? s.tints[(Math.random() * s.tints.length) | 0] : 0xffffff });
+      if (this.okGround(mx, my)) members.push(this.newMember(kind, mx, my, heading));
     }
-    if (members.length) this.herds.push({ kind, members, cx: bx, cy: by });
+    if (!members.length) return null;
+    const h = { kind, members, cx: bx, cy: by, forced: !!force };
+    this.herds.push(h);
+    return h;
   }
 
   spawnFlock(fx, fy) {
@@ -156,15 +180,40 @@ export class Wildlife {
     this.flocks.push({ kind, cx: bx, cy: by, birds, drift: [Math.random() - 0.5, Math.random() - 0.5] });
   }
 
-  // threat: { bx, by, speed, car }  -> returns hit events
+  members() { const out = []; for (const h of this.herds) for (const m of h.members) out.push({ m, h, s: SPECIES[m.kind] }); return out; }
+
+  seatHeight(m) { const s = SPECIES[m.kind]; return (s.leg[1] + s.body[1]) / 16 * m.scale; }
+
+  hit(m, dmg, fromBX, fromBY, events) {
+    m.hp -= dmg;
+    events.push({ type: 'animal-hurt', m });
+    if (m.hp <= 0) {
+      for (const h of this.herds) { const i = h.members.indexOf(m); if (i >= 0) h.members.splice(i, 1); }
+      events.push({ type: 'kill', kind: m.kind, bx: m.bx, by: m.by, z: m.z });
+      return;
+    }
+    if (AGGRO[m.kind] || (m.kind === 'bison' && Math.random() < 0.5) || (m.kind === 'elk' && Math.random() < 0.3)) { m.state = 'attack'; m.timer = 15; }
+    else { m.state = 'flee'; m.timer = 5; m.yaw = Math.atan2(m.bx - fromBX, -(m.by - fromBY)); }
+    if (m.tamed && m.state === 'attack') m.state = 'flee';
+  }
+
+  targets(events) {
+    return this.members().filter((e) => !e.m.ridden).map(({ m, s }) => ({
+      bx: m.bx, by: m.by, z: m.z, h: (s.leg[1] + s.body[1]) / 16 * m.scale, r: s.body[0] / 32 + 0.25, kind: 'animal', ref: m,
+      hit: (dmg, fx, fy) => this.hit(m, dmg, fx, fy, events) }));
+  }
+
+  // threat: { bx, by, speed, car, foot, z }  -> returns events
   update(dt, fx, fy, camH, origin, threat) {
     const near = camH < 1200 && this.enabled, events = [];
-    this.herds = this.herds.filter((h) => near && Math.hypot(h.cx - fx, h.cy - fy) < 1300);
+    this.t += dt;
+    const keep = (h) => h.members.some((m) => m.tamed || m.ridden);
+    this.herds = this.herds.filter((h) => h.members.length && (keep(h) ? Math.hypot(h.cx - fx, h.cy - fy) < 5000 : near && Math.hypot(h.cx - fx, h.cy - fy) < 1300));
     this.flocks = this.flocks.filter((f) => near && Math.hypot(f.cx - fx, f.cy - fy) < 1500);
     this.spawnT -= dt;
     if (near && this.spawnT <= 0) {
       this.spawnT = 0.25;
-      if (this.herds.length < 10) this.spawnHerd(fx, fy);
+      if (this.herds.filter((h) => !keep(h) && !h.forced).length < 10) this.spawnHerd(fx, fy);
       if (this.flocks.length < 5) this.spawnFlock(fx, fy);
     }
     for (const r of Object.values(this.rigs)) r.begin(origin);
@@ -174,32 +223,43 @@ export class Wildlife {
       const s = SPECIES[h.kind], rig = this.rigs[h.kind];
       let sx = 0, sy = 0;
       for (const m of h.members) {
-        // fear: run directly away from the player / car
-        if (threat) {
+        m.atkCd = Math.max(0, m.atkCd - dt);
+        if (!m.ridden && threat) {
           const dx = m.bx - threat.bx, dy = m.by - threat.by, d = Math.hypot(dx, dy);
-          const fear = s.fear * (threat.car ? 1.6 + threat.speed / 25 : 1);
-          if (d < fear && m.state !== 'down') { m.state = 'flee'; m.timer = 3 + Math.random() * 3; m.yaw = Math.atan2(dx, -dy) + (Math.random() - 0.5) * 0.4; }
+          if (!m.tamed) {
+            if (AGGRO[m.kind] && threat.foot && d < AGGRO[m.kind] && m.state !== 'attack' && m.state !== 'down') { m.state = 'attack'; m.timer = 12; }
+            const fear = s.fear * (threat.car ? 1.6 + threat.speed / 25 : 1);
+            if (!AGGRO[m.kind] && d < fear && !['down', 'attack'].includes(m.state)) { m.state = 'flee'; m.timer = 3 + Math.random() * 3; m.yaw = Math.atan2(dx, -dy) + (Math.random() - 0.5) * 0.4; }
+          }
           if (threat.car && d < s.body[2] / 32 + 1.8 && threat.speed > 3 && m.state !== 'down') {
             m.state = 'down'; m.timer = 4; events.push({ type: 'hit-animal', big: !!s.big, kind: h.kind });
-            m.bx += dx / (d || 1) * 2; m.by += dy / (d || 1) * 2;
+            m.bx += dx / (d || 1) * 2; m.by += dy / (d || 1) * 2; m.hp -= threat.speed * 0.8;
+          }
+          if (m.state === 'attack') {   // chase and bite
+            m.yaw = Math.atan2(-dx, dy);
+            if (d < 1.6 + s.body[2] / 32 && m.atkCd <= 0 && threat.foot) { m.atkCd = 1.3; events.push({ type: 'bite', kind: m.kind, dmg: m.kind === 'bear' ? 5 : m.kind === 'wolf' ? 2 : 3 }); }
+            if (d > 70) { m.state = 'walk'; m.timer = 5; }
           }
         }
-        m.timer -= dt;
-        if (m.timer <= 0) {
-          if (m.state === 'down') { m.state = 'flee'; m.timer = 3; }
-          else { m.state = Math.random() < 0.55 ? 'graze' : 'walk'; m.timer = 3 + Math.random() * 9; m.yaw += (Math.random() - 0.5) * 1.5; }
+        if (m.hp <= 0 && !m.dead) { m.dead = true; events.push({ type: 'kill', kind: m.kind, bx: m.bx, by: m.by, z: m.z }); }
+        if (!m.ridden) {
+          m.timer -= dt;
+          if (m.timer <= 0) {
+            if (m.state === 'down') { m.state = 'flee'; m.timer = 3; }
+            else { m.state = Math.random() < 0.55 ? 'graze' : 'walk'; m.timer = 3 + Math.random() * 9; m.yaw += (Math.random() - 0.5) * 1.5; }
+          }
+          const target = m.state === 'walk' ? s.walk : m.state === 'flee' || m.state === 'attack' ? s.run * (m.state === 'attack' ? 0.75 : 1) : 0;
+          m.speed += (target - m.speed) * Math.min(1, dt * 3);
+          if (m.speed > 0.05 && m.state !== 'down') {
+            const nx = m.bx + Math.sin(m.yaw) * m.speed * dt, ny = m.by - Math.cos(m.yaw) * m.speed * dt;
+            if (this.okGround(nx, ny, m.state === 'attack')) { m.bx = nx; m.by = ny; }
+            else { m.yaw += Math.PI * (0.6 + Math.random() * 0.8); if (m.state !== 'flee' && m.state !== 'attack') m.state = 'graze'; }
+          }
+          m.z += (w.H(m.bx, m.by) - m.z) * Math.min(1, dt * 10);
         }
-        const target = m.state === 'walk' ? s.walk : m.state === 'flee' ? s.run : 0;
-        m.speed += (target - m.speed) * Math.min(1, dt * 3);
-        if (m.speed > 0.05 && m.state !== 'down') {
-          const nx = m.bx + Math.sin(m.yaw) * m.speed * dt, ny = m.by - Math.cos(m.yaw) * m.speed * dt;
-          if (this.okGround(nx, ny)) { m.bx = nx; m.by = ny; }
-          else { m.yaw += Math.PI * (0.6 + Math.random() * 0.8); if (m.state !== 'flee') m.state = 'graze'; }
-        }
-        m.z += (w.H(m.bx, m.by) - m.z) * Math.min(1, dt * 10);
-        m.head += ((m.state === 'graze' ? 0.95 : m.state === 'flee' ? -0.15 : 0.1) - m.head) * Math.min(1, dt * 3);
-        const run = m.speed > s.walk * 2;
+        m.head += ((m.state === 'graze' && !m.ridden ? 0.95 : m.state === 'flee' || m.ridden ? -0.15 : 0.1) - m.head) * Math.min(1, dt * 3);
         const legH = s.leg[1] / 16;
+        const run = m.speed > s.walk * 2;
         m.phase += m.speed * dt * (run ? 2.2 : 4.2) / Math.max(0.35, legH);
         const ph = m.phase, amp = Math.min(run ? 0.9 : 0.45, m.speed * 0.4);
         const a1 = Math.sin(ph) * amp, a2 = Math.sin(ph + (run ? 0.6 : Math.PI)) * amp;
@@ -208,15 +268,17 @@ export class Wildlife {
           head: [m.head * (s.neck ? 1.1 : 0.7), Math.sin(ph * 0.3) * 0.1, 0],
           tail: [0.3 + Math.sin(ph * 2 + m.timer) * 0.25, 0, Math.sin(ph * 1.3) * 0.3],
         };
+        let tilt = m.state === 'down' ? [0, Math.PI / 2] : null;
+        if (m.buck > 0) { tilt = [-0.55 - Math.sin(this.t * 13) * 0.25, Math.sin(this.t * 7) * 0.15]; pose.fl = pose.fr = [-0.9, 0, 0]; }
         const bob = run ? Math.abs(Math.sin(ph)) * 0.1 * legH : 0;
-        const tilt = m.state === 'down' ? [0, Math.PI / 2 * Math.min(1, (4 - m.timer) * 4)] : null;
-        const colors = { body: m.color, head: m.color, tail: m.color, fl: m.color, fr: m.color, bl: m.color, br: m.color };
+        const c = m.color, colors = { body: c, head: c, tail: c, fl: c, fr: c, bl: c, br: c };
         rig.push(new THREE.Vector3(m.bx, m.z + bob, -m.by), m.yaw, m.scale, pose, colors, tilt);
         sx += m.bx; sy += m.by;
       }
-      h.cx = sx / h.members.length; h.cy = sy / h.members.length;
+      h.members = h.members.filter((m) => !m.dead);
+      if (h.members.length) { h.cx = sx / h.members.length; h.cy = sy / h.members.length; }
     }
-    const t = performance.now() / 1000;
+    const t = this.t;
     for (const f of this.flocks) {
       const b = BIRDS[f.kind], rig = this.brigs[f.kind];
       f.cx += f.drift[0] * dt * 2; f.cy += f.drift[1] * dt * 2;
@@ -224,13 +286,11 @@ export class Wildlife {
       for (const bd of f.birds) {
         bd.a += bd.w * dt;
         const x = f.cx + Math.cos(bd.a) * bd.r, y = f.cy + Math.sin(bd.a) * bd.r;
-        const dx = -Math.sin(bd.a) * Math.sign(bd.w), dy = Math.cos(bd.a) * Math.sign(bd.w);   // tangent
+        const dx = -Math.sin(bd.a) * Math.sign(bd.w), dy = Math.cos(bd.a) * Math.sign(bd.w);
         const flapAmt = (Math.sin(t * 0.7 + bd.flap) > 0.2 || f.kind !== 'hawk') ? 1 : 0.08;
         const fl = Math.sin(t * b.flap + bd.flap) * 0.7 * flapAmt;
-        const pose = { wl: [0, 0, fl], wr: [0, 0, -fl] };
-        const bank = -Math.sign(bd.w) * 0.35;
-        rig.push(new THREE.Vector3(x, Math.max(ground, 0) + bd.h + Math.sin(t + bd.flap) * 2, -y), Math.atan2(dx, -dy), 1, pose,
-                 { body: b.col, wl: b.wing, wr: b.wing }, [0, bank]);
+        rig.push(new THREE.Vector3(x, Math.max(ground, 0) + bd.h + Math.sin(t + bd.flap) * 2, -y), Math.atan2(dx, -dy), 1,
+                 { wl: [0, 0, fl], wr: [0, 0, -fl] }, { body: b.col, wl: b.wing, wr: b.wing }, [0, -Math.sign(bd.w) * 0.35]);
       }
     }
     for (const r of Object.values(this.rigs)) r.end();

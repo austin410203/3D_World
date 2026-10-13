@@ -1,78 +1,98 @@
-// personModel.js - articulated low-poly person (1.78 m) with procedural idle / walk / run / jump / swim poses.
-// Local frame: +Z forward, feet at y = 0.
+// personModel.js - Minecraft-style blocky hero (32 px = 1.8 m) with pixel textures and procedural poses:
+// idle / walk / run / jump / swim / sit (riding) / melee swing / bow aim / tumble.  Local frame: +Z forward, feet at y = 0.
 import * as THREE from 'three';
+import { pixelNoise } from '../pixel.js';
 
-export function buildPerson({ shirt = 0x2f6fd6, pants = 0x1f2a44, skin = 0xe1b48e, hair = 0x2b1b12, shoes = 0xf0f0f0 } = {}) {
-  const mat = (c, r = 0.75) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
-  const M = { shirt: mat(shirt), pants: mat(pants), skin: mat(skin, 0.6), hair: mat(hair, 0.9), shoes: mat(shoes, 0.5), eye: mat(0x111111, 0.3) };
-  const root = new THREE.Group(); root.name = 'Person';
-  const mesh = (g, m, parent, x = 0, y = 0, z = 0) => {
-    const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o;
+export const PX = 1.8 / 32;
+
+export function buildPerson({ shirt = 0x2aa5b5, pants = 0x3b3fa6, skin = 0xc8926a, hair = 0x3a2212, shoes = 0x55585e } = {}) {
+  const pix = pixelNoise(16, 0.8, 1.0, 3);
+  const M = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, map: pix, roughness: 0.92, ...extra });
+  const mat = { shirt: M(shirt), pants: M(pants), skin: M(skin), hair: M(hair), shoes: M(shoes), white: M(0xffffff), eye: M(0x3a3aa8),
+                mouth: M(0x8a5040) };
+  const root = new THREE.Group(); root.name = 'Hero';
+  const box = (w, h, d, x, y, z, m, parent) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(w * PX, h * PX, d * PX), m);
+    o.position.set(x * PX, y * PX, z * PX); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o;
   };
-  const pivot = (parent, x, y, z) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; };
-  const cap = (r, len) => new THREE.CapsuleGeometry(r, len, 4, 10);
+  const pivot = (parent, x, y, z) => { const g = new THREE.Group(); g.position.set(x * PX, y * PX, z * PX); parent.add(g); return g; };
 
-  const hips = pivot(root, 0, 0.95, 0);
-  mesh(new THREE.BoxGeometry(0.3, 0.16, 0.18), M.pants, hips, 0, 0.0, 0);
-  const spine = pivot(hips, 0, 0.06, 0);
-  mesh(cap(0.155, 0.3), M.shirt, spine, 0, 0.27, 0).scale.set(1.12, 1, 0.78);
-  mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.08, 10), M.skin, spine, 0, 0.54, 0);
-  const neck = pivot(spine, 0, 0.58, 0);
-  mesh(new THREE.SphereGeometry(0.112, 18, 14), M.skin, neck, 0, 0.11, 0).scale.set(0.92, 1.05, 1);
-  mesh(new THREE.SphereGeometry(0.118, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), M.hair, neck, 0, 0.13, -0.008);
-  for (const sx of [-1, 1]) mesh(new THREE.SphereGeometry(0.014, 8, 6), M.eye, neck, sx * 0.038, 0.125, 0.1);
-  mesh(new THREE.BoxGeometry(0.02, 0.03, 0.02), M.skin, neck, 0, 0.095, 0.112);   // nose
+  const hips = pivot(root, 0, 12, 0);
+  const spine = pivot(hips, 0, 0, 0);
+  box(8, 12, 4, 0, 6, 0, mat.shirt, spine);
+  box(8.1, 1, 4.1, 0, 0.5, 0, mat.pants, spine);
+  const neck = pivot(spine, 0, 12, 0);
+  box(8, 8, 8, 0, 4, 0, mat.skin, neck);
+  box(8.4, 2, 8.4, 0, 7.4, 0, mat.hair, neck);                    // hair: top, back, sides
+  box(8.4, 5, 1.2, 0, 4.5, -3.8, mat.hair, neck);
+  box(1, 3, 8.4, 3.8, 5.5, 0, mat.hair, neck); box(1, 3, 8.4, -3.8, 5.5, 0, mat.hair, neck);
+  for (const sx of [-1, 1]) {
+    box(2, 1, 0.3, sx * 2, 4, 4.05, mat.white, neck);
+    box(1, 1, 0.35, sx * 1.5, 4, 4.08, mat.eye, neck);
+  }
+  box(2, 1, 0.3, 0, 2.6, 4.05, mat.mouth, neck);                 // nose
+  box(4, 1, 0.3, 0, 1.5, 4.05, mat.hair, neck);                  // stubble
 
   const limbs = {};
   for (const [side, sx] of [['L', 1], ['R', -1]]) {
-    const sh = pivot(spine, sx * 0.205, 0.47, 0);
-    mesh(new THREE.SphereGeometry(0.06, 10, 8), M.shirt, sh);
-    mesh(cap(0.05, 0.22), M.shirt, sh, 0, -0.14, 0);
-    const el = pivot(sh, 0, -0.29, 0);
-    mesh(cap(0.043, 0.2), M.skin, el, 0, -0.13, 0);
-    mesh(new THREE.SphereGeometry(0.048, 10, 8), M.skin, el, 0, -0.28, 0.005).scale.set(0.8, 1.1, 0.6);
-    const hp = pivot(hips, sx * 0.095, -0.02, 0);
-    mesh(cap(0.074, 0.3), M.pants, hp, 0, -0.21, 0);
-    const kn = pivot(hp, 0, -0.43, 0);
-    mesh(cap(0.058, 0.32), M.pants, kn, 0, -0.2, 0);
-    const ft = pivot(kn, 0, -0.46, 0);
-    mesh(new THREE.BoxGeometry(0.1, 0.07, 0.25), M.shoes, ft, 0, -0.012, 0.05);
-    limbs[side] = { sh, el, hp, kn, ft };
+    const sh = pivot(spine, sx * 6, 10, 0);
+    box(4, 6, 4, 0, -1, 0, mat.shirt, sh);
+    const el = pivot(sh, 0, -4, 0);
+    box(4, 6, 4, 0, -3, 0, mat.skin, el);
+    const hand = pivot(el, 0, -6, 0);
+    const hp = pivot(hips, sx * 2, 0, 0);
+    box(4, 6, 4, 0, -3, 0, mat.pants, hp);
+    const kn = pivot(hp, 0, -6, 0);
+    box(4, 6, 4, 0, -2.5, 0, mat.pants, kn);
+    box(4.2, 2, 4.2, 0, -5.1, 0, mat.shoes, kn);
+    const ft = pivot(kn, 0, -6, 0);
+    limbs[side] = { sh, el, hp, kn, ft, hand };
   }
-  root.userData = { hips, spine, neck, limbs, phase: 0 };
+  root.userData = { hips, spine, neck, limbs, phase: 0, hipY: 12 * PX, hand: limbs.R.hand };
   return root;
 }
 
-// pose: { speed (m/s), air (bool), swim (bool), dt }
-export function animatePerson(p, { speed = 0, air = false, swim = false, dt = 0.016, t = 0 }) {
+// pose: { speed, air, swim, sit, attack (0..1 swing), aim, tumble, dt, t }
+export function animatePerson(p, { speed = 0, air = false, swim = false, sit = false, attack = 0, aim = false, tumble = 0, dt = 0.016, t = 0 }) {
   const u = p.userData, L = u.limbs.L, R = u.limbs.R;
-  const run = THREE.MathUtils.clamp((speed - 2.2) / 3.5, 0, 1);
+  const run = THREE.MathUtils.clamp((speed - 2.4) / 3.5, 0, 1);
   const moving = THREE.MathUtils.clamp(speed / 1.2, 0, 1);
-  const freq = speed < 0.05 ? 0 : (1.6 + run * 1.3) * Math.PI * 2 / (1 + run * 0.15) * Math.min(1, 0.35 + speed / 2);
+  const freq = speed < 0.05 ? 0 : (1.6 + run * 1.2) * Math.PI * 2 * Math.min(1, 0.35 + speed / 2);
   u.phase += freq * dt;
-  const ph = u.phase, s = Math.sin(ph), c = Math.cos(ph);
-  const amp = (0.45 + 0.45 * run) * moving;
-  const k = 1 - Math.exp(-dt * 14), lerp = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * k; };
+  const ph = u.phase, s = Math.sin(ph);
+  const amp = (0.6 + 0.4 * run) * moving;
+  const k = 1 - Math.exp(-dt * 16), set = (o, key, v) => { o.rotation[key] += (v - o.rotation[key]) * k; };
+  let hipY = u.hipY;
 
-  if (air) {
-    lerp(L.hp, 'x', -0.7); lerp(R.hp, 'x', 0.15); lerp(L.kn, 'x', 1.1); lerp(R.kn, 'x', 0.5);
-    lerp(L.sh, 'x', -1.2); lerp(R.sh, 'x', 0.6); lerp(L.el, 'x', -0.6); lerp(R.el, 'x', -0.6);
-    lerp(u.spine, 'x', 0.15);
+  if (sit) {                               // straddling a mount
+    set(L.hp, 'x', -1.35); set(R.hp, 'x', -1.35); set(L.hp, 'z', 0.45); set(R.hp, 'z', -0.45);
+    set(L.kn, 'x', 0.9); set(R.kn, 'x', 0.9);
+    set(L.sh, 'x', -0.7); set(R.sh, 'x', -0.7); set(L.el, 'x', -0.5); set(R.el, 'x', -0.5);
+    set(u.spine, 'x', 0.1 + Math.sin(t * 9) * 0.04 * moving);
+  } else if (tumble > 0) {                 // thrown off / knocked down
+    set(L.hp, 'x', -0.8); set(R.hp, 'x', 0.6); set(L.sh, 'x', -2.6); set(R.sh, 'x', -2.2);
+    set(L.sh, 'z', 0.8); set(R.sh, 'z', -0.8); set(u.spine, 'x', -0.3);
+  } else if (air) {
+    set(L.hp, 'x', -0.6); set(R.hp, 'x', 0.3); set(L.kn, 'x', 0.8); set(R.kn, 'x', 0.3);
+    set(L.sh, 'x', -1.0); set(R.sh, 'x', 0.5); set(u.spine, 'x', 0.1);
   } else if (swim) {
-    lerp(u.spine, 'x', 1.1); lerp(u.hips, 'x', 0);
-    lerp(L.sh, 'x', -2.6 + s * 1.2); lerp(R.sh, 'x', -2.6 - s * 1.2); lerp(L.el, 'x', -0.2); lerp(R.el, 'x', -0.2);
-    lerp(L.hp, 'x', 0.9 + s * 0.3); lerp(R.hp, 'x', 0.9 - s * 0.3); lerp(L.kn, 'x', 0.3); lerp(R.kn, 'x', 0.3);
+    set(u.spine, 'x', 1.2);
+    set(L.sh, 'x', -2.6 + s * 1.2); set(R.sh, 'x', -2.6 - s * 1.2);
+    set(L.hp, 'x', 0.4 + s * 0.4); set(R.hp, 'x', 0.4 - s * 0.4); set(L.kn, 'x', 0.2); set(R.kn, 'x', 0.2);
+    hipY -= 0.55;
   } else {
-    lerp(L.hp, 'x', -s * amp); lerp(R.hp, 'x', s * amp);
-    lerp(L.kn, 'x', (0.15 + Math.max(0, -c) * 1.1) * amp * 1.4 + 0.05);
-    lerp(R.kn, 'x', (0.15 + Math.max(0, c) * 1.1) * amp * 1.4 + 0.05);
-    lerp(L.ft, 'x', -0.2 * amp * s); lerp(R.ft, 'x', 0.2 * amp * s);
-    lerp(L.sh, 'x', s * amp * 0.85); lerp(R.sh, 'x', -s * amp * 0.85);
-    lerp(L.el, 'x', -0.25 - run * 1.15); lerp(R.el, 'x', -0.25 - run * 1.15);
-    lerp(u.spine, 'x', 0.04 + run * 0.22 + (speed < 0.05 ? Math.sin(t * 1.7) * 0.012 : 0));
+    set(L.hp, 'x', -s * amp); set(R.hp, 'x', s * amp);
+    set(L.kn, 'x', Math.max(0, -Math.cos(ph)) * amp * 0.9); set(R.kn, 'x', Math.max(0, Math.cos(ph)) * amp * 0.9);
+    set(L.sh, 'x', s * amp * 0.9); set(R.sh, 'x', -s * amp * 0.9);
+    set(L.el, 'x', -0.1 - run * 0.9); set(R.el, 'x', -0.1 - run * 0.9);
+    set(u.spine, 'x', run * 0.18 + (speed < 0.05 ? Math.sin(t * 1.7) * 0.012 : 0));
+    hipY += Math.abs(s) * (0.02 + run * 0.04) * moving;
   }
-  for (const [side, l] of [[1, L], [-1, R]]) lerp(l.sh, 'z', side * (0.08 + (air ? 0.3 : 0)));
-  const bob = air || swim ? 0 : Math.abs(s) * (0.025 + run * 0.05) * moving;
-  u.hips.position.y = 0.95 + bob - run * 0.03 - (swim ? 0.55 : 0);
-  u.spine.rotation.y = -s * 0.12 * amp;
+  if (!sit) { set(L.hp, 'z', 0); set(R.hp, 'z', 0); }
+  if (!tumble) { set(L.sh, 'z', 0.06); set(R.sh, 'z', -0.06); }
+  // weapon actions override the right arm (and left arm for the bow)
+  if (aim) { R.sh.rotation.x = -1.5; R.el.rotation.x = -0.2; L.sh.rotation.x = -1.45; L.sh.rotation.z = -0.5; L.el.rotation.x = -0.9; }
+  else if (attack > 0) { R.sh.rotation.x = -2.4 * Math.sin(Math.PI * attack) - 0.3; R.el.rotation.x = -0.3; R.sh.rotation.z = -0.25 * Math.sin(Math.PI * attack); }
+  u.hips.position.y = hipY;
+  u.neck.rotation.x = swim ? -0.9 : 0;
 }

@@ -1,6 +1,7 @@
 // traffic.js - cars cruising both directions of the highway around the player (instanced)
 import * as THREE from 'three';
 import { trafficCarGeometry } from '../actors/carModel.js';
+import { pixelNoise } from '../pixel.js';
 
 const LANES = [   // lateral offset (blender, + = left of travel direction), direction, speed m/s
   [-1.75, 1, 31], [-5.25, 1, 25], [1.75, -1, 30], [5.25, -1, 24],
@@ -11,10 +12,10 @@ export class Traffic {
   constructor(scene, world, n = 70) {
     this.w = world; this.n = n;
     this.mesh = new THREE.InstancedMesh(trafficCarGeometry(),
-      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.4 }), n);
+      new THREE.MeshStandardMaterial({ vertexColors: true, map: pixelNoise(16, 0.8, 1, 11), roughness: 0.45, metalness: 0.15 }), n);
     this.mesh.castShadow = true; this.mesh.frustumCulled = false;
     scene.add(this.mesh);
-    this.cars = [];
+    this.cars = []; this.blockers = [];
     const c = new THREE.Color();
     for (let i = 0; i < n; i++) {
       this.cars.push({ s: 0, lane: LANES[i % 4], speed: 0, alive: false });
@@ -50,6 +51,18 @@ export class Traffic {
         const dx = playerCar.x - bx, dy = playerCar.y - by, ahead = (dx * r.tx + dy * r.ty) * c.lane[1];
         if (ahead > 0 && ahead < 35 && Math.abs(dx * -r.ty + dy * r.tx - c.lane[0]) < 2.2) v = Math.min(v, Math.max(0, (ahead - 9) * 0.8));
       }
+      // queue behind the car ahead in the same lane, and stop for blockers (accidents)
+      for (const o of this.cars) {
+        if (o === c || o.lane !== c.lane || !o.alive) continue;
+        const ahead = (o.s - c.s) * c.lane[1];
+        if (ahead > 0 && ahead < 40) v = Math.min(v, Math.max(0, (ahead - 9) * 0.9), o.v ?? v);
+      }
+      for (const b of this.blockers) {
+        if (b.dir !== c.lane[1]) continue;
+        const ahead = (b.s - c.s) * c.lane[1];
+        if (ahead > 0 && ahead < 120) v = Math.min(v, Math.max(0, (ahead - 22) * 0.4));
+      }
+      c.v = v;
       c.s += v * c.lane[1] * dt;
       const yaw = Math.atan2(r.tx * c.lane[1], -r.ty * c.lane[1]);
       this.p.set(bx - this.origin.x, r.z, -by - this.origin.z);
