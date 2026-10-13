@@ -1,0 +1,50 @@
+:root { --fg: #fff; --muted: rgba(255,255,255,.7); --panel: rgba(10,16,24,.55); --accent: #ffd60a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1622; color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+#loading { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10;
+  background: radial-gradient(ellipse at 30% 20%, #23415f 0%, #0b1622 70%); }
+#loading .card { width: min(640px, calc(100% - 32px)); padding: 32px; border-radius: 18px; background: var(--panel);
+  backdrop-filter: blur(8px); box-shadow: 0 20px 60px rgba(0,0,0,.4); text-align: center; }
+#loading h1 { margin: 0; font-size: clamp(32px, 7vw, 56px); letter-spacing: .08em; font-weight: 900; }
+#loading h1 span { color: var(--accent); }
+#loading .sub { color: var(--muted); margin: 6px 0 22px; }
+.bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; }
+#load-bar { height: 100%; width: 0; background: linear-gradient(90deg, #36d1ff, var(--accent)); transition: width .3s; }
+#load-text { color: var(--muted); font-size: 14px; }
+#start { display: none; margin: 8px auto 18px; padding: 12px 34px; font-size: 18px; font-weight: 800; border: 0; border-radius: 999px;
+  background: var(--accent); color: #111; cursor: pointer; }
+#loading.done #start { display: inline-block; }
+#loading.done .bar, #loading.done #load-text { display: none; }
+.keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 14px; text-align: left; font-size: 13px; color: var(--muted); }
+.keys b { color: var(--fg); }
+@media (max-width: 560px) { .keys { grid-template-columns: 1fr 1fr; } }
+
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+#top { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: min(620px, calc(100% - 32px)); text-align: center;
+  text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+#stage { font-weight: 900; font-size: 22px; letter-spacing: .04em; }
+#stage-sub { color: var(--muted); font-size: 13px; }
+#km { font-size: 12px; color: var(--muted); margin: 4px 0 6px; }
+#route-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); }
+#progress { height: 100%; border-radius: 3px; background: var(--accent); width: 0; }
+#stages .tick { position: absolute; top: 8px; transform: translateX(-50%); font-size: 10px; color: var(--muted); }
+#stages .tick::before { content: ""; position: absolute; top: -10px; left: 50%; width: 1px; height: 8px; background: rgba(255,255,255,.6); }
+#minimap { position: absolute; left: 16px; bottom: 16px; width: 220px; height: 220px; filter: drop-shadow(0 4px 12px rgba(0,0,0,.5)); }
+#dash { position: absolute; right: 16px; bottom: 10px; width: 260px; text-align: center; }
+#tach { width: 260px; height: 260px; background: radial-gradient(circle, rgba(0,0,0,.55) 0 58%, transparent 60%); border-radius: 50%; }
+#dash-extra { font-size: 13px; color: var(--muted); margin-top: -18px; text-shadow: 0 1px 3px #000; }
+#foot { position: absolute; right: 22px; bottom: 22px; padding: 8px 14px; border-radius: 10px; background: var(--panel); font-size: 14px; }
+#prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 10px 18px; border-radius: 10px;
+  background: var(--panel); font-weight: 700; display: none; }
+#toast { position: absolute; left: 50%; top: 110px; transform: translateX(-50%); padding: 8px 16px; border-radius: 10px;
+  background: var(--panel); font-size: 14px; opacity: 0; transition: opacity .4s; white-space: nowrap; max-width: calc(100% - 32px);
+  overflow: hidden; text-overflow: ellipsis; }
+#fps { position: absolute; right: 12px; top: 10px; font-size: 11px; color: var(--muted); }
+#help { position: absolute; right: 16px; top: 50px; width: min(380px, calc(100% - 32px)); padding: 14px 18px; border-radius: 12px;
+  background: rgba(10,16,24,.8); font-size: 13px; line-height: 1.6; display: none; }
+#help.show { display: block; }
+#help h3 { margin: 0 0 6px; }
+@media (max-width: 700px) { #minimap { width: 140px; height: 140px; } #dash, #tach { width: 180px; } #tach { height: 180px; } }

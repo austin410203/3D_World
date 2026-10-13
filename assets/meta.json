@@ -1,0 +1,244 @@
+{
+ "X0": -4000.0,
+ "X1": 104000.0,
+ "Y0": -9000.0,
+ "Y1": 9000.0,
+ "CELL": 30.0,
+ "NX": 3601,
+ "NY": 601,
+ "H_OFF": 200.0,
+ "H_SCALE": 20.0,
+ "backdrop": {
+  "nx": 361,
+  "ny": 401,
+  "x0": -4000.0,
+  "y0": -60000.0,
+  "cell": 300.0
+ },
+ "route_n": 21237,
+ "route_km": 106.17508697509766,
+ "road_half": 8.0,
+ "towns": {
+  "Pacific Bay": {
+   "center": [
+    3000,
+    300
+   ],
+   "radius": [
+    2600,
+    2300
+   ],
+   "style": "westcity"
+  },
+  "Dustwater": {
+   "center": [
+    20000,
+    0
+   ],
+   "radius": [
+    700,
+    520
+   ],
+   "style": "deserttown"
+  },
+  "Silver Pass": {
+   "center": [
+    52800,
+    820
+   ],
+   "radius": [
+    420,
+    280
+   ],
+   "style": "mountaintown"
+  },
+  "Maple Falls": {
+   "center": [
+    66000,
+    0
+   ],
+   "radius": [
+    800,
+    600
+   ],
+   "style": "plainstown"
+  },
+  "Gateway City": {
+   "center": [
+    75500,
+    0
+   ],
+   "radius": [
+    1300,
+    1500
+   ],
+   "style": "rivercity"
+  },
+  "Harper's Ridge": {
+   "center": [
+    87400,
+    250
+   ],
+   "radius": [
+    560,
+    420
+   ],
+   "style": "appaltown"
+  },
+  "Atlantic Harbor": {
+   "center": [
+    97300,
+    1200
+   ],
+   "radius": [
+    2900,
+    2500
+   ],
+   "style": "eastcity"
+  }
+ },
+ "lakes": {
+  "Silver Lake": {
+   "center": [
+    50700,
+    2750
+   ],
+   "radius": [
+    1700,
+    950
+   ],
+   "water_z": 952.0
+  }
+ },
+ "stages": [
+  {
+   "stage": 1,
+   "title": "Coastal City",
+   "subtitle": "Pacific Bay  (San Francisco style)",
+   "route_km": 0.0,
+   "start": [
+    1304.5296630859375,
+    7350.04150390625,
+    73.06061553955078
+   ],
+   "x": 0
+  },
+  {
+   "stage": 2,
+   "title": "Desert Highway",
+   "subtitle": "Nevada basin & range",
+   "route_km": 14.57,
+   "start": [
+    10044.4462890625,
+    -23.83713722229004,
+    267.4245910644531
+   ],
+   "x": 9800
+  },
+  {
+   "stage": 3,
+   "title": "Desert Town",
+   "subtitle": "Dustwater  (Route 66 style)",
+   "route_km": 22.28,
+   "start": [
+    17750.6953125,
+    89.04329681396484,
+    372.5186767578125
+   ],
+   "x": 17500
+  },
+  {
+   "stage": 4,
+   "title": "Canyon",
+   "subtitle": "Grand Canyon country",
+   "route_km": 34.82,
+   "start": [
+    30249.568359375,
+    521.896240234375,
+    544.5573120117188
+   ],
+   "x": 30000
+  },
+  {
+   "stage": 5,
+   "title": "Mountains & Lake",
+   "subtitle": "Rocky Mountains - Silver Lake",
+   "route_km": 48.95,
+   "start": [
+    44038.828125,
+    657.0955810546875,
+    670.1705322265625
+   ],
+   "x": 43800
+  },
+  {
+   "stage": 6,
+   "title": "Plains",
+   "subtitle": "Kansas wheat country - Maple Falls",
+   "route_km": 64.45,
+   "start": [
+    59050.96484375,
+    5.775328159332275,
+    673.4072875976562
+   ],
+   "x": 58800
+  },
+  {
+   "stage": 7,
+   "title": "River City",
+   "subtitle": "Gateway City  (St. Louis style)",
+   "route_km": 78.66,
+   "start": [
+    73257.375,
+    -8.804500579833984,
+    194.396728515625
+   ],
+   "x": 73000
+  },
+  {
+   "stage": 8,
+   "title": "Appalachian",
+   "subtitle": "Blue Ridge autumn forest - Harper's Ridge",
+   "route_km": 86.26,
+   "start": [
+    80731.75,
+    438.8973693847656,
+    202.54774475097656
+   ],
+   "x": 80500
+  },
+  {
+   "stage": 9,
+   "title": "Seaside",
+   "subtitle": "Atlantic bluffs - Lighthouse Point",
+   "route_km": 96.99,
+   "start": [
+    90731.515625,
+    -998.567626953125,
+    133.97442626953125
+   ],
+   "x": 90500
+  },
+  {
+   "stage": 10,
+   "title": "East Coast City",
+   "subtitle": "Atlantic Harbor  (New York style)",
+   "route_km": 102.31,
+   "start": [
+    95715.0234375,
+    -1032.9395751953125,
+    22.255983352661133
+   ],
+   "x": 95500
+  }
+ ],
+ "river": {
+  "z": 128.0,
+  "hw": 230.0
+ },
+ "canyon": {
+  "z": 195.0
+ },
+ "static_cell": 1500.0,
+ "colliders": 110816
+}

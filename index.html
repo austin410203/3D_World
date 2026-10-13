@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coast to Coast · 3D World</title>
+  <meta name="description" content="開放世界公路旅行:從舊金山開車橫跨美國到紐約,10 個場景、可開車與走路跑步。" />
+  <link rel="stylesheet" href="./src/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="loading">
+    <div class="card">
+      <h1>COAST <span>TO</span> COAST</h1>
+      <p class="sub">從太平洋到大西洋 · 106 公里開放世界公路之旅</p>
+      <div class="bar"><div id="load-bar"></div></div>
+      <p id="load-text">載入中…</p>
+      <button id="start">開始遊戲</button>
+      <div class="keys">
+        <div><b>WASD</b> 移動 / 油門煞車轉向</div><div><b>Shift</b> 跑步</div><div><b>Space</b> 跳躍 / 手煞車</div>
+        <div><b>F</b> 上車 / 下車</div><div><b>E / Q</b> 升檔 / 降檔</div><div><b>M</b> 自排 / 手排</div>
+        <div><b>C</b> 車內 / 車後視角</div><div><b>R</b> 回到公路</div><div><b>1–0</b> 傳送到 10 個場景</div>
+        <div><b>滑鼠</b> 轉動視角 · 滾輪縮放</div><div><b>G</b> 畫質</div><div><b>N</b> 音效 · <b>H</b> 說明</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div id="top">
+      <div id="stage">STAGE 1</div>
+      <div id="stage-sub"></div>
+      <div id="km"></div>
+      <div id="route-bar"><div id="progress"></div><div id="stages"></div></div>
+    </div>
+    <canvas id="minimap" width="220" height="220"></canvas>
+    <div id="dash"><canvas id="tach" width="260" height="260"></canvas><div id="dash-extra"></div></div>
+    <div id="foot"></div>
+    <div id="prompt"></div>
+    <div id="toast"></div>
+    <div id="fps"></div>
+    <div id="help">
+      <h3>操作說明</h3>
+      <p><b>走路</b>:WASD 移動、Shift 跑步、Space 跳躍、滑鼠轉視角、F 靠近車子上車</p>
+      <p><b>開車</b>:W 油門、S 煞車 / 倒車、A D 轉向、Space 手煞車甩尾、E/Q 升降檔、M 切換自排/手排、C 換視角、R 回到公路、F 停車後下車</p>
+      <p><b>車輛</b>:6 速變速箱 · 700 Nm · 極速 300 km/h(電子限速)· 換檔約 0.24 秒動力中斷</p>
+      <p><b>傳送</b>:1 海岸城市 · 2 沙漠公路 · 3 沙漠小鎮 · 4 大峽谷 · 5 山與湖 · 6 平原 · 7 河畔城市 · 8 阿帕拉契 · 9 海岸燈塔 · 0 東岸城市</p>
+      <p>H 關閉</p>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

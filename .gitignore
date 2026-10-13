@@ -1,0 +1,6 @@
+.DS_Store
+Thumbs.db
+.claude/
+*.blend1
+node_modules/
+.vercel
