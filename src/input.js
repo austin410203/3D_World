@@ -2,7 +2,7 @@
 export class Input {
   constructor(canvas) {
     this.keys = new Set(); this.pressed = new Set();
-    this.mdx = 0; this.mdy = 0; this.wheel = 0; this.dragging = false;
+    this.mdx = 0; this.mdy = 0; this.wheel = 0; this.dragging = false; this.lockEnabled = true;
     addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT') return;
       if (!this.keys.has(e.code)) this.pressed.add(e.code);
@@ -13,7 +13,7 @@ export class Input {
     addEventListener('blur', () => this.keys.clear());
     canvas.addEventListener('mousedown', (e) => {
       this.dragging = true;
-      if (e.button === 0 && document.pointerLockElement !== canvas) canvas.requestPointerLock?.();
+      if (e.button === 0 && this.lockEnabled && document.pointerLockElement !== canvas) canvas.requestPointerLock?.()?.catch?.(() => {});
     });
     addEventListener('mouseup', () => (this.dragging = false));
     addEventListener('mousemove', (e) => {

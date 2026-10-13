@@ -29,7 +29,22 @@ An open-world road trip across the USA built with three.js. You drive or walk 10
 | R | back to the highway | back to the highway |
 | 1–9, 0 | teleport to stages 1–10 | same |
 | Mouse / wheel | rotate / zoom the camera | same |
+| V / K / L | god mode / call the car / toggle residents & wildlife | |
 | G / N / H | graphics quality / sound / help | |
+
+
+## God mode and wildlife
+- **V god mode**: free flight over the whole world. WASD to fly, E/Space to climb, Q/C to descend, Shift to speed up, mouse wheel to change speed, drag the mouse to turn. Click any of the 14 places in the list on the left (Golden Gate, Grand Canyon, Silver Lake, Gateway Arch, Lighthouse Point, Liberty Island, New York midtown, and more) to fly there along a smooth arc. Number keys fly you to each stage. Press V again to land right where you are, and press **K** to call the car to you.
+- **Minecraft-style residents**: blocky pedestrians with pixel faces wander the streets of every city and town (up to 320 nearby in the big cities). They jump out of the way of fast cars, and fall over if you hit them.
+- **Minecraft-style wildlife by biome** (they graze, wander in herds, and flee when you get close):
+  - Coastal hills: horses
+  - Desert: llamas, foxes
+  - Canyon: goats, foxes
+  - Rockies: deer, elk, bears, wolves, goats
+  - Plains: cows, pigs, sheep, chickens, horses, bison
+  - Appalachia: deer, bears, foxes, pigs
+  - Sky: gulls along the coasts, hawks over the desert, crows over the plains
+- **L** toggles residents and wildlife on or off. Everything is drawn with InstancedMesh, so each body part is a single draw call no matter how many creatures there are.
 
 ## Car physics
 - Twin-turbo V8 torque curve (700 Nm), 900–8,000 rpm, rev limiter

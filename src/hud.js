@@ -67,7 +67,7 @@ export class HUD {
 
   drawMini(s) {
     const g = this.mctx, W = this.mini.width, w = this.w;
-    const span = s.mode === 'car' ? 2400 + Math.min(4000, s.car.speedKmh * 14) : 1400;   // metres across
+    const span = s.span || (s.mode === 'car' ? 2400 + Math.min(4000, s.car.speedKmh * 14) : 1400);   // metres across
     const sc = W / span;
     g.save(); g.clearRect(0, 0, W, W);
     g.beginPath(); g.arc(W / 2, W / 2, W / 2 - 2, 0, Math.PI * 2); g.clip();
@@ -87,7 +87,7 @@ export class HUD {
       if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
     }
     g.stroke();
-    if (s.mode === 'foot') {     // where the car is parked
+    if (s.mode !== 'car') {      // where the car is parked
       const x = W / 2 + (s.carBX - s.bx) * sc, y = W / 2 - (s.carBY - s.by) * sc;
       g.fillStyle = '#ff3b30'; g.beginPath(); g.arc(x, y, 4.5, 0, Math.PI * 2); g.fill();
     }

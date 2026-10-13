@@ -14,6 +14,9 @@ import { CameraRig } from './camera.js';
 import { Input } from './input.js';
 import { HUD } from './hud.js';
 import { EngineAudio } from './audio.js';
+import { GodMode, PLACES } from './god.js';
+import { Residents } from './life/residents.js';
+import { Wildlife } from './life/wildlife.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
@@ -57,12 +60,41 @@ async function main() {
   const input = new Input(canvas);
   const hud = new HUD(world);
   const audio = new EngineAudio();
+  const god = new GodMode(camera, world);
+  const residents = new Residents(scene, world);
+  const wildlife = new Wildlife(scene, world);
+  const lifeOrigin = new THREE.Vector3();
   let mode = 'foot';
-  window.__game = { world, car, person, camera, terrain, statics, veg, traffic, scene, renderer, get mode() { return mode; } };
+  window.__game = { world, car, person, camera, terrain, statics, veg, traffic, scene, renderer, god, residents, wildlife, get mode() { return mode; } };
+
+  // ---- god view (free flight)
+  const enterGod = () => {
+    if (mode === 'god') return;
+    god.enter(mode === 'car' ? car.pos : person.pos);
+    mode = 'god'; input.lockEnabled = false; document.exitPointerLock?.();
+    $('god').classList.add('show'); hud.prompt('');
+    hud.toast('上帝視角:WASD 飛行 · E 上升 · Q 下降 · Shift 加速 · 點左側地點飛過去 · V 降落', 5);
+  };
+  const exitGod = () => {
+    const p = camera.position; let bx = p.x, by = -p.z;
+    if (world.waterLevel(bx, by) !== null) { const s = world.nearestRouteS(bx, by), r = world.routeAt(s); bx = r.x - r.ty * -12; by = r.y + r.tx * -12; }
+    const b = world.inBounds(bx, by);
+    person.place(b.x, b.y, god.yaw + Math.PI); person.mesh.visible = true;
+    mode = 'foot'; input.lockEnabled = true; god.fly = null;
+    rig.yaw = god.yaw; rig.pitch = 0.25; rig.init = false;
+    $('god').classList.remove('show');
+    hud.toast('已降落 · 按 K 把車叫過來', 3);
+  };
+  for (const pl of PLACES) {
+    const b = document.createElement('button');
+    b.innerHTML = `${pl.name}<small>${pl.sub}</small>`;
+    b.onclick = () => { if (mode !== 'god') enterGod(); god.flyTo(pl); hud.toast('飛往 ' + pl.name); };
+    $('places').appendChild(b);
+  }
   progress('完成');
 
   $('loading').classList.add('done');
-  $('start').onclick = () => { $('loading').style.display = 'none'; audio.start(); canvas.requestPointerLock?.(); };
+  $('start').onclick = () => { $('loading').style.display = 'none'; audio.start(); canvas.requestPointerLock?.()?.catch?.(() => {}); };
   addEventListener('keydown', () => audio.ctx || audio.start(), { once: true });
   hud.toast('按 F 上車 · WASD 移動 · Shift 跑步 · H 說明', 6);
 
@@ -75,6 +107,10 @@ async function main() {
   function teleport(k) {
     const st = world.meta.stages[k]; if (!st) return;
     const s = world.nearestRouteS(st.start[0], st.start[1]), r = world.routeAt(s);
+    if (mode === 'god') {
+      god.flyTo({ bx: r.x, by: r.y, h: 40, dist: 700, az: Math.atan2(r.ty, r.tx) * 180 / Math.PI + 200, elev: 0.3 });
+      hud.toast(`飛往 Stage ${st.stage}:${st.title}`); return;
+    }
     if (mode === 'car') car.place(r.x - r.ty * -5.25, r.y + r.tx * -5.25, Math.atan2(r.ty, r.tx));
     else person.place(r.x - r.ty * -12, r.y + r.tx * -12, 0);
     rig.init = false; terrain.update(r.x, r.y, 0, 999);
@@ -94,7 +130,18 @@ async function main() {
     for (let k = 0; k < 10; k++) if (input.hit(k === 9 ? 'Digit0' : 'Digit' + (k + 1))) teleport(k);
 
     const carBX = car.pos.x, carBY = -car.pos.z;
-    if (mode === 'foot') {
+    if (input.hit('KeyV')) { if (mode === 'god') exitGod(); else if (mode === 'car' && car.speedKmh > 10) hud.toast('先停車再進入上帝視角'); else enterGod(); }
+    if (input.hit('KeyL')) { residents.enabled = wildlife.enabled = !residents.enabled; hud.toast(residents.enabled ? '居民 / 動物:開' : '居民 / 動物:關'); }
+    if (mode === 'god') {
+      const anyKey = input.down('KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyQ', 'Space');
+      god.update(dt, input, anyKey);
+      $('god-alt').textContent = `高度 ${Math.round(god.altitude())} m · 速度 ${Math.round(god.vel.length() * 3.6)} km/h`;
+    } else if (mode === 'foot') {
+      if (input.hit('KeyK')) {   // call the car: park it beside the player
+        const fx = Math.sin(person.yaw), fz = Math.cos(person.yaw);
+        const bx = person.pos.x + fz * 4 + fx * 3, by = -(person.pos.z - fx * 4 + fz * 3);
+        car.place(bx, by, Math.atan2(-fz, fx)); hud.toast('車子已經到了');
+      }
       person.update(dt, mv, rig.yaw);
       const dCar = Math.hypot(person.pos.x - car.pos.x, person.pos.z - car.pos.z);
       hud.prompt(dCar < 5.5 ? '按 F 上車' : '');
@@ -127,10 +174,12 @@ async function main() {
     }
 
     // ---- traffic (+ simple collisions with the player)
-    const pBX = mode === 'car' ? car.pos.x : person.pos.x, pBY = mode === 'car' ? -car.pos.z : -person.pos.z;
+    const focus = mode === 'god' ? camera.position : mode === 'car' ? car.pos : person.pos;
+    const pBX = focus.x, pBY = -focus.z;
     const routeS = world.nearestRouteS(pBX, pBY);
     traffic.update(dt, pBX, pBY, routeS, mode === 'car' ? { x: pBX, y: pBY } : null);
     for (const tc of traffic.cars) {
+      if (mode === 'god') break;
       const dx = pBX - tc.bx, dy = pBY - tc.by, d = Math.hypot(dx, dy);
       const r = mode === 'car' ? 2.6 : 1.5;
       if (d < r && d > 1e-3) {
@@ -140,22 +189,40 @@ async function main() {
       }
     }
 
+    // ---- residents & wildlife around the focus point
+    const camAlt = Math.max(0, camera.position.y - Math.max(0, world.H(camera.position.x, -camera.position.z)));
+    lifeOrigin.set(Math.round(pBX / 500) * 500, 0, -Math.round(pBY / 500) * 500);
+    const threat = mode === 'god' ? null : { bx: pBX, by: pBY, car: mode === 'car', speed: mode === 'car' ? car.speed : person.speed };
+    const lifeAlt = mode === 'god' ? camAlt : 0;
+    const ev = [...residents.update(dt, pBX, pBY, lifeAlt, lifeOrigin, threat), ...wildlife.update(dt, pBX, pBY, lifeAlt, lifeOrigin, threat)];
+    for (const e of ev) {
+      if (e.type === 'hit-person') { car.vel.multiplyScalar(0.85); hud.toast('小心行人!', 1.5); }
+      if (e.type === 'hit-animal') { car.vel.multiplyScalar(e.big ? 0.45 : 0.85); hud.toast(`撞到${{ cow: '牛', bison: '野牛', elk: '麋鹿', bear: '熊', horse: '馬', deer: '鹿', pig: '豬', sheep: '羊', chicken: '雞', llama: '羊駝', fox: '狐狸', wolf: '狼', goat: '山羊' }[e.kind] || '動物'}了!`, 1.5); }
+    }
+    if (mode === 'god') {
+      const c = wildlife.count();
+      $('life-count').textContent = `附近:居民 ${residents.list.length} · 動物 ${c.animals} · 鳥 ${c.birds}`;
+      scene.fog.near = 2500 + camAlt * 2; scene.fog.far = 42000 + camAlt * 12;
+    } else if (scene.fog.near !== 2500) { scene.fog.near = 2500; scene.fog.far = 42000; }
+
     // ---- world streaming
-    const p = mode === 'car' ? car.pos : person.pos;
+    const p = focus;
     tTerrain -= dt; tStatic -= dt;
     if (tTerrain <= 0) { terrain.update(camera.position.x, -camera.position.z, Math.max(0, camera.position.y - world.H(camera.position.x, -camera.position.z))); tTerrain = 0.2; }
     if (tStatic <= 0) { statics.update(pBX); tStatic = 1.0; }
     veg.update(pBX, pBY);
-    sky.follow(p);
+    sky.follow(mode === 'god' ? new THREE.Vector3(p.x, Math.max(0, world.H(p.x, -p.z)), p.z) : p);
     water.update(t);
     audio.update(car, mode === 'car');
 
-    const heading = mode === 'car' ? Math.atan2(-Math.cos(car.yaw), Math.sin(car.yaw)) : Math.atan2(-Math.cos(person.yaw), Math.sin(person.yaw));
-    hud.update(dt, { mode, car, person, bx: pBX, by: pBY, routeS, fps, run: mv.run, heading, carBX, carBY });
+    const heading = mode === 'god' ? Math.atan2(Math.cos(god.yaw), -Math.sin(god.yaw))
+      : mode === 'car' ? Math.atan2(-Math.cos(car.yaw), Math.sin(car.yaw)) : Math.atan2(-Math.cos(person.yaw), Math.sin(person.yaw));
+    hud.update(dt, { mode, car, person, bx: pBX, by: pBY, routeS, fps, run: mv.run, heading, carBX, carBY,
+                     span: mode === 'god' ? Math.min(30000, 1500 + camAlt * 6) : null });
     input.endFrame();
     if (draw) renderer.render(scene, camera);
   }
-  function frame() { requestAnimationFrame(frame); tick(Math.min(clock.getDelta(), 0.05)); }
+  function frame() { requestAnimationFrame(frame); const dt = Math.min(clock.getDelta(), 0.05); if (!window.__game.paused) tick(dt); }
   window.__game.tick = (n = 1, dt = 1 / 60) => { for (let i = 0; i < n; i++) tick(dt, i === n - 1); };
   window.__game.input = input; window.__game.rig = rig;
   frame();
