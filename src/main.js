@@ -26,11 +26,12 @@ import { OutlinePost } from './post.js';
 import { IsoCam } from './iso.js';
 import { Decor } from './world/decor.js';
 import { exportKit } from './kit.js';
+import { TouchControls, IS_TOUCH } from './touch.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH ? 1.25 : 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = T.toneMapping; renderer.toneMappingExposure = T.exposure;
@@ -73,6 +74,7 @@ async function main() {
   const traffic = new Traffic(scene, world);
   const rig = new CameraRig(camera, world); rig.yaw = car.yaw + Math.PI * 0.8;
   const input = new Input(canvas);
+  const touch = IS_TOUCH ? new TouchControls(input) : null;
   const hud = new HUD(world);
   const audio = new EngineAudio();
   const god = new GodMode(camera, world);
@@ -88,7 +90,7 @@ async function main() {
     god.enter(mode === 'car' ? car.pos : person.pos);
     mode = 'god'; input.lockEnabled = false; document.exitPointerLock?.();
     $('god').classList.add('show'); hud.prompt('');
-    hud.toast('上帝視角:WASD 飛行 · E 上升 · Q 下降 · Shift 加速 · 點左側地點飛過去 · V 降落', 5);
+    hud.toast(touch ? '上帝視角:搖桿飛行 · ▲▼ 升降 · ☰ → 📍地點 可直接飛過去' : '上帝視角:WASD 飛行 · E 上升 · Q 下降 · Shift 加速 · 點左側地點飛過去 · V 降落', 5);
   };
   const exitGod = () => {
     const p = camera.position; let bx = p.x, by = -p.z;
@@ -98,7 +100,7 @@ async function main() {
     mode = 'foot'; input.lockEnabled = true; god.fly = null;
     rig.yaw = god.yaw; rig.pitch = 0.25; rig.init = false;
     $('god').classList.remove('show');
-    hud.toast('已降落 · 按 K 把車叫過來', 3);
+    hud.toast(touch ? '已降落 · ☰ → 🚗 叫車' : '已降落 · 按 K 把車叫過來', 3);
   };
   for (const pl of PLACES) {
     const b = document.createElement('button');
@@ -109,12 +111,17 @@ async function main() {
   progress('完成');
 
   $('loading').classList.add('done');
-  $('start').onclick = () => { $('loading').style.display = 'none'; audio.start(); canvas.requestPointerLock?.()?.catch?.(() => {}); };
+  $('start').onclick = () => {
+    $('loading').style.display = 'none'; audio.start();
+    if (touch) { document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); }
+    else canvas.requestPointerLock?.()?.catch?.(() => {});
+  };
   addEventListener('keydown', () => audio.ctx || audio.start(), { once: true });
-  hud.toast('按 F 上車 · WASD 移動 · Shift 跑步 · H 說明', 6);
+  hud.toast(touch ? '左邊搖桿移動(推到底跑步)· 右邊滑動轉視角 · ☰ 更多功能' : '按 F 上車 · WASD 移動 · Shift 跑步 · H 說明', 6);
+  $('hotbar').addEventListener('touchstart', (e) => { const s = e.target.closest('.slot'); if (s) { e.preventDefault(); combat.select([...s.parentNode.children].indexOf(s)); } }, { passive: false });
 
   const clock = new THREE.Clock();
-  let tTerrain = 0, tStatic = 0, fps = 60, quality = 1;
+  let tTerrain = 0, tStatic = 0, fps = 60, quality = IS_TOUCH ? 0 : 1;
   const qualities = [{ veg: 1500, shadow: 60, name: '低' }, { veg: 2600, shadow: 90, name: '中' }, { veg: 3800, shadow: 130, name: '高' }];
   const applyQuality = () => { veg.radius = qualities[quality].veg; sky.setShadowSize(qualities[quality].shadow); };
   applyQuality();
@@ -244,10 +251,10 @@ async function main() {
       if (an) prompt = `按 F 騎上${NAMES[an.kind]}${an.tamed ? '(已馴服)' : '(野生:會試圖把你甩下來)'}`;
       else if (dCar < 5.5) prompt = car.dead ? '車子壞了 · 按 K 叫一台新車' : '按 F 上車';
       if (input.hit('KeyF')) {
-        if (an) { ride.mount(an); mode = 'ride'; hud.toast(an.tamed ? `騎上${NAMES[an.kind]}:WASD 控制 · Shift 衝刺 · Space 跳 · F 下來` : `騎上野生${NAMES[an.kind]}…撐住!`, 3); }
+        if (an) { ride.mount(an); mode = 'ride'; hud.toast(an.tamed ? (touch ? `騎上${NAMES[an.kind]}:搖桿控制,推到底衝刺` : `騎上${NAMES[an.kind]}:WASD 控制 · Shift 衝刺 · Space 跳 · F 下來`) : `騎上野生${NAMES[an.kind]}…撐住!`, 3); }
         else if (dCar < 5.5 && !car.dead) {
           mode = 'car'; person.mesh.visible = false; rig.freeLook = 0;
-          hud.toast('E/Q 升降檔 · M 手自排 · Space 手煞車 · C 視角 · R 回公路', 5);
+          hud.toast(touch ? '搖桿往上加速、往下煞車/倒車、左右轉向 · ⛔ 手煞甩尾' : 'E/Q 升降檔 · M 手自排 · Space 手煞車 · C 視角 · R 回公路', 5);
         }
       }
       if (input.hit('KeyR')) { const s = world.nearestRouteS(person.pos.x, -person.pos.z), r = world.routeAt(s); person.place(r.x - r.ty * -12, r.y + r.tx * -12, 0); }
@@ -370,6 +377,16 @@ async function main() {
     audio.update(car, mode === 'car');
 
     // ---- HUD
+    if (touch) {
+      let ak = null, al = '';
+      if (/按 F/.test(prompt)) { ak = 'KeyF'; al = /騎/.test(prompt) ? '騎乘' : '上車'; }
+      else if (/按住? ?E/.test(prompt)) { ak = 'KeyE'; al = /急救/.test(prompt) ? '急救' : /帶走/.test(prompt) ? '帶走' : '互動'; }
+      else if (mode === 'ride') { ak = 'KeyF'; al = '下來'; }
+      else if (mode === 'car') { ak = 'KeyF'; al = '下車'; }
+      if (quests.dialog) { ak = 'KeyE'; al = '接受'; }
+      touch.setMode(mode, ak, al);
+      prompt = ak && !quests.dialog ? '' : prompt.replace(/按住? ?[EF] ?/, '');   // the button label already says it
+    }
     hud.prompt(mode === 'dead' || mode === 'god' ? '' : prompt);
     const heading = mode === 'god' ? Math.atan2(Math.cos(god.yaw), -Math.sin(god.yaw))
       : mode === 'car' ? Math.atan2(-Math.cos(car.yaw), Math.sin(car.yaw)) : Math.atan2(-Math.cos(person.yaw), Math.sin(person.yaw));

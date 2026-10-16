@@ -14,7 +14,7 @@ export class Input {
     canvas.addEventListener('mousedown', (e) => {
       this.dragging = true;
       if (document.pointerLockElement === canvas) { this.pressed.add('Mouse' + e.button); this.keys.add('Mouse' + e.button); }
-      if (e.button === 0 && this.lockEnabled && document.pointerLockElement !== canvas) canvas.requestPointerLock?.()?.catch?.(() => {});
+      if (e.button === 0 && this.lockEnabled && !this.touchMode && document.pointerLockElement !== canvas) canvas.requestPointerLock?.()?.catch?.(() => {});
     });
     addEventListener('mouseup', (e) => { this.dragging = false; this.keys.delete('Mouse' + e.button); });
     addEventListener('mousemove', (e) => {

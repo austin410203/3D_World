@@ -37,6 +37,19 @@ An open-world road trip across the USA built with three.js. You drive or walk 10
 
 
 
+
+## Phone / tablet (landscape)
+Touch devices switch to the touch layout automatically (`src/touch.js`). The centre of the screen stays clear:
+- **Left thumb**: a floating joystick appears wherever you touch the left side of the screen. It moves you on foot, accelerates, brakes and steers in the car, and flies in god mode. Pushing it all the way runs.
+- **Right thumb**: drag to turn the camera, pinch with two fingers to zoom.
+- **Bottom right**: at most 3 large buttons, which change with what you're doing:
+  - On foot: action, jump, attack.
+  - In the car: get out, handbrake.
+  - In god mode: land, up, down.
+  - The action button switches automatically to get in, ride, talk, accept, first aid or carry, depending on what's nearby.
+- **☰ top right**: god mode, isometric view, call the car, in-car view, back to highway, change style, manual/auto gears, sound, graphics quality, places, help. Tap outside the menu to close it.
+- Tap a hotbar slot to switch weapons. The minimap, speedometer, emeralds and quest list sit small along the top edge, over the sky. Starting the game goes full-screen and locks to landscape; in portrait the game asks you to rotate the phone.
+
 ## Three visual styles (one world, switchable)
 All three styles share the same 106 km world, gameplay, characters and data; only the rendering layer changes (`src/theme.js`).
 

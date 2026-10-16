@@ -127,3 +127,67 @@ body.theme-cozy { --fg: #3b3328; --muted: #7c6f5c; --panel: rgba(250,243,226,.95
 .theme-cozy #styles button { color: #3b3328; border-color: #d8c9a6; }
 .theme-cozy #hotbar .slot { background: rgba(250,243,226,.9); border-color: #c9b98f; border-radius: 10px; }
 .theme-cozy #hotbar .slot.sel { border-color: #3f7a4d; }
+
+/* ===================== touch / phone landscape layout ===================== */
+#touch { display: none; }
+body.touch #touch { display: block; position: fixed; inset: 0; z-index: 6; touch-action: none; -webkit-user-select: none; user-select: none; }
+body.touch, body.touch #c { touch-action: none; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+#joy-base { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; display: none;
+  background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); backdrop-filter: blur(2px); pointer-events: none; }
+#joy-base.on { display: block; }
+#joy-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; transform: translate(-50%,-50%);
+  background: rgba(255,255,255,.55); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+/* context buttons: an arc in the bottom-right corner, never more than three */
+#tbtns { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: 18px; width: 190px; height: 170px; pointer-events: none; }
+#tbtns .tb { position: absolute; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(255,255,255,.45); color: #fff;
+  background: rgba(20,24,30,.38); backdrop-filter: blur(3px); display: grid; place-content: center; text-align: center; padding: 0;
+  font: inherit; line-height: 1; touch-action: none; }
+#tbtns .tb span { font-size: 24px; }
+#tbtns .tb small { font-size: 10px; opacity: .85; margin-top: 2px; }
+#tbtns .tb.down { background: rgba(255,214,10,.55); transform: scale(.94); }
+#tbtns .tb0 { right: 0; bottom: 0; width: 82px; height: 82px; }          /* main: action / exit / land */
+#tbtns .tb1 { right: 94px; bottom: 4px; width: 62px; height: 62px; }     /* jump / handbrake / up */
+#tbtns .tb2 { right: 16px; bottom: 96px; width: 62px; height: 62px; }    /* attack / down */
+#tmenu-btn { position: absolute; right: max(12px, env(safe-area-inset-right)); top: 10px; width: 40px; height: 40px; border-radius: 10px; border: 0;
+  background: rgba(20,24,30,.45); color: #fff; font-size: 20px; }
+#tmenu { position: absolute; right: max(12px, env(safe-area-inset-right)); top: 56px; display: none; grid-template-columns: repeat(4, 70px); gap: 6px;
+  padding: 8px; border-radius: 14px; background: rgba(15,20,28,.85); z-index: 2; }
+#tmenu.open { display: grid; }
+#tmenu button { height: 50px; border: 0; border-radius: 10px; background: rgba(255,255,255,.1); color: #fff; font: inherit; font-size: 11px; }
+#tmenu button span { display: block; font-size: 20px; }
+#rotate-hint { display: none; }
+@media (orientation: portrait) { body.touch #rotate-hint { display: grid; position: fixed; inset: 0; place-content: center; background: #0b1622;
+  color: #fff; font-size: 22px; font-weight: 800; z-index: 20; } }
+
+/* HUD pushed to the edges, smaller, so the middle of the screen stays clear */
+body.touch #top { top: 6px; width: min(360px, 46vw); }
+body.touch #stage { font-size: 14px; } body.touch #stage-sub, body.touch #km, body.touch #fps, body.touch .god-keys, body.touch #help { display: none !important; }
+body.touch #route-bar { height: 4px; } body.touch #stages .tick { font-size: 8px; top: 6px; }
+body.touch #minimap { left: max(10px, env(safe-area-inset-left)); top: 8px; bottom: auto; width: 96px; height: 96px; }
+body.touch #emeralds { right: 60px; top: 10px; font-size: 12px; padding: 3px 8px; }
+body.touch #quest { right: 60px; top: 42px; width: min(220px, 34vw); font-size: 11px; padding: 6px 9px; }
+body.touch #dash { right: auto; left: 50%; transform: translateX(-50%); bottom: 4px; width: 150px; }
+body.touch #tach { width: 150px; height: 150px; }
+body.touch #dash-extra { font-size: 10px; margin-top: -12px; }
+body.touch #foot { right: auto; left: 50%; transform: translateX(-50%); bottom: auto; top: 54px; font-size: 11px; padding: 3px 9px; background: rgba(0,0,0,.25); }
+body.touch #mc { bottom: 6px; }
+body.touch #hearts { font-size: 13px; margin-bottom: 2px; }
+body.touch #hotbar { pointer-events: auto; }
+body.touch #hotbar .slot { width: 36px; height: 36px; font-size: 18px; border-width: 2px; }
+body.touch #hotbar .slot small { display: none; }
+body.touch #prompt { bottom: 70px; font-size: 13px; padding: 6px 12px; }
+body.touch #toast { top: 60px; font-size: 12px; }
+body.touch #dialog { bottom: 62px; width: min(460px, 56vw); font-size: 13px; padding: 10px 14px; }
+body.touch .dialog-keys { display: none; }
+body.touch #pbar { bottom: 110px; width: 200px; }
+body.touch #god.show { display: none; }
+body.touch #god.show.mshow { display: block; left: 112px; top: 8px; width: 210px; max-height: calc(100% - 20px); }
+body.touch #loading .keys { display: none; }
+body.touch #hud { z-index: 7; }   /* interactive HUD bits (hotbar, places) sit above the touch layer */
+body.touch #foot { display: none !important; }
+/* phone: compact speedometer up in the sky area next to the minimap, never over the car */
+body.touch #dash { left: 112px; right: auto; top: 2px; bottom: auto; transform: none; width: 104px; }
+body.touch #tach { width: 104px; height: 104px; background: radial-gradient(circle, rgba(0,0,0,.35) 0 56%, transparent 58%); }
+body.theme-cozy.touch #tach { background: radial-gradient(circle, rgba(250,243,226,.75) 0 56%, transparent 58%); }
+body.theme-sketch.touch #tach { background: radial-gradient(circle, rgba(255,255,255,.8) 0 56%, transparent 58%); }
+body.touch #dash-extra { display: none; }
