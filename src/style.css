@@ -88,3 +88,42 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1622; col
 #death { position: absolute; inset: 0; display: none; place-content: center; text-align: center; background: rgba(120,0,0,.45); }
 #death.show { display: grid; }
 #death h1 { font-size: 56px; margin: 0; text-shadow: 3px 3px 0 #300; }
+/* ---- style picker + export */
+#styles { display: flex; gap: 8px; justify-content: center; margin: 4px 0 12px; }
+#styles button { flex: 1; max-width: 150px; padding: 10px 6px; border-radius: 12px; border: 2px solid rgba(255,255,255,.25); background: rgba(255,255,255,.06);
+  color: var(--fg); font: inherit; font-weight: 800; cursor: pointer; }
+#styles button small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+#styles button.on { border-color: var(--accent); background: rgba(255,214,10,.15); }
+#export-kit { margin-top: 10px; width: 100%; padding: 8px; border: 0; border-radius: 8px; background: var(--accent); color: #111; font-weight: 800; cursor: pointer; }
+
+/* ---- sketch theme: paper UI, thin graphite lines */
+body.theme-sketch { --fg: #2d3135; --muted: #6b7178; --panel: rgba(255,255,255,.92); --accent: #e4572e; background: #eef0f0; }
+.theme-sketch #top, .theme-sketch #fps { text-shadow: none; }
+.theme-sketch #emeralds, .theme-sketch #quest, .theme-sketch #foot, .theme-sketch #prompt, .theme-sketch #toast, .theme-sketch #help, .theme-sketch #god {
+  background: rgba(255,255,255,.94); color: #2d3135; border: 1.5px solid #c9ced2; box-shadow: 0 2px 6px rgba(0,0,0,.08); border-radius: 10px; }
+.theme-sketch #route-bar { background: #d5d9dc; }
+.theme-sketch #stages .tick { color: #6b7178; }
+.theme-sketch #tach { background: radial-gradient(circle, rgba(255,255,255,.92) 0 58%, transparent 60%); }
+.theme-sketch #dash-extra { text-shadow: none; color: #4a4f55; }
+.theme-sketch #places button { background: #f3f4f5; color: #2d3135; border: 1px solid #d5d9dc; }
+.theme-sketch #loading { background: #eef0f0; }
+.theme-sketch #loading .card { background: #fff; color: #2d3135; border: 1.5px solid #c9ced2; }
+.theme-sketch #styles button { color: #2d3135; border-color: #c9ced2; }
+.theme-sketch #minimap { filter: grayscale(.85) contrast(.9) brightness(1.15) drop-shadow(0 2px 4px rgba(0,0,0,.15)); }
+
+/* ---- cozy theme: cream rounded cards like a city builder */
+body.theme-cozy { --fg: #3b3328; --muted: #7c6f5c; --panel: rgba(250,243,226,.95); --accent: #3f7a4d; }
+.theme-cozy #top, .theme-cozy #fps { text-shadow: 0 1px 0 rgba(255,255,255,.6); color: #3b3328; }
+.theme-cozy #emeralds, .theme-cozy #quest, .theme-cozy #foot, .theme-cozy #prompt, .theme-cozy #toast, .theme-cozy #help, .theme-cozy #god {
+  background: rgba(250,243,226,.96); color: #3b3328; border-radius: 18px; box-shadow: 0 6px 18px rgba(60,45,20,.25); border: 0; }
+.theme-cozy #quest { border-left: 6px solid #3f7a4d; }
+.theme-cozy #route-bar { background: rgba(250,243,226,.8); }
+.theme-cozy #progress { background: #3f7a4d; }
+.theme-cozy #places button { background: #efe5cc; color: #3b3328; border-radius: 12px; }
+.theme-cozy #tach { background: radial-gradient(circle, rgba(250,243,226,.95) 0 58%, transparent 60%); }
+.theme-cozy #dash-extra { color: #3b3328; text-shadow: none; }
+.theme-cozy #loading { background: radial-gradient(ellipse at 30% 20%, #e9dcc0 0%, #b9a982 80%); }
+.theme-cozy #loading .card { background: rgba(250,243,226,.97); color: #3b3328; }
+.theme-cozy #styles button { color: #3b3328; border-color: #d8c9a6; }
+.theme-cozy #hotbar .slot { background: rgba(250,243,226,.9); border-color: #c9b98f; border-radius: 10px; }
+.theme-cozy #hotbar .slot.sel { border-color: #3f7a4d; }

@@ -1,6 +1,20 @@
 // terrain.js - 3 km terrain tiles from the 30 m heightfield with distance LOD + skirts, and the distant backdrop
 import * as THREE from 'three';
 import { ASSET, fetchBin } from '../data.js';
+import { STYLE, graded } from '../theme.js';
+
+// sketch style: dashed survey grid every 14 m + elevation contours every 40 m (fade with distance)
+const SKETCH_TERRAIN = STYLE !== 'sketch' ? '' : `
+  {
+    float dcam = length(vGWP - cameraPosition);
+    vec2 gf = abs(fract(vGWP.xz / 14.0) - 0.5);
+    float lx = step(0.486, gf.x) * step(0.45, fract(vGWP.z / 2.4));
+    float lz = step(0.486, gf.y) * step(0.45, fract(vGWP.x / 2.4));
+    float grid = max(lx, lz) * (1.0 - smoothstep(220.0, 1100.0, dcam));
+    float ct = abs(fract(vGWP.y / 40.0) - 0.5);
+    float contour = smoothstep(0.47, 0.495, ct) * (1.0 - smoothstep(1500.0, 9000.0, dcam));
+    diffuseColor.rgb *= 1.0 - 0.1 * grid - 0.18 * contour;
+  }`;
 
 const TILE_CELLS = 100;
 const STEPS = [1, 2, 5, 10, 25];
@@ -42,7 +56,7 @@ function terrainMaterial(map, detail) {
         float k = 1.0 - smoothstep(150.0, 1400.0, dist);
         diffuseColor.rgb *= mix(1.0, (d1 / 0.588) * 0.6 + 0.4, 0.55 * k) * mix(1.0, d2 / 0.588, 0.35);`);
   };
-  return m;
+  return graded(m, { extra: SKETCH_TERRAIN });
 }
 
 export class Terrain {
@@ -165,7 +179,7 @@ export class Terrain {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     g.setIndex(idx); g.computeVertexNormals();
-    const m = new THREE.MeshStandardMaterial({ map: tex, roughness: 1 });
+    const m = graded(new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
     this.backdrop = new THREE.Mesh(g, m);
     this.scene.add(this.backdrop);
   }

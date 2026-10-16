@@ -2,6 +2,7 @@
 // Creatures are drawn relative to a moving origin near the camera (float precision in a 100 km world).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { graded } from '../theme.js';
 import { pixelNoise } from '../pixel.js';
 
 // geometry helpers ------------------------------------------------------------------------------
@@ -28,7 +29,7 @@ const _m = new THREE.Matrix4(), _p = new THREE.Matrix4(), _q = new THREE.Quatern
 export class PartRig {
   // parts: [{ name, geo, pivot: [x, y, z] }]
   constructor(scene, parts, max, { shadow = true } = {}) {
-    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map: pixelNoise(16, 0.78, 1.0, 7) });
+    const mat = graded(new THREE.MeshLambertMaterial({ vertexColors: true, map: pixelNoise(16, 0.78, 1.0, 7) }));
     this.max = max; this.n = 0; this.origin = new THREE.Vector3();
     this.parts = parts.map((p) => {
       const mesh = new THREE.InstancedMesh(p.geo, mat, max);

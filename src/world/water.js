@@ -1,5 +1,6 @@
 // water.js - ocean, bay, lake and rivers with an animated procedural normal map
 import * as THREE from 'three';
+import { graded } from '../theme.js';
 import { ASSET, fetchBin, fetchJSON } from '../data.js';
 import { decodeEntry } from './static.js';
 
@@ -30,8 +31,8 @@ export class Water {
     const [entries, buf] = await Promise.all([fetchJSON(ASSET + 'water.json'), fetchBin(ASSET + 'water.bin.gz')]);
     this.nmap = waterNormals();
     this.mats = {
-      ocean: new THREE.MeshStandardMaterial({ color: 0x0b3350, roughness: 0.06, metalness: 0.0, normalMap: this.nmap, normalScale: new THREE.Vector2(0.55, 0.55) }),
-      fresh: new THREE.MeshStandardMaterial({ color: 0x123d3c, roughness: 0.05, metalness: 0.0, normalMap: this.nmap, normalScale: new THREE.Vector2(0.25, 0.25) }),
+      ocean: graded(new THREE.MeshStandardMaterial({ color: 0x0b3350, roughness: 0.06, metalness: 0.0, normalMap: this.nmap, normalScale: new THREE.Vector2(0.55, 0.55) })),
+      fresh: graded(new THREE.MeshStandardMaterial({ color: 0x123d3c, roughness: 0.05, metalness: 0.0, normalMap: this.nmap, normalScale: new THREE.Vector2(0.25, 0.25) })),
     };
     this.meshes = [];
     for (const e of entries) {

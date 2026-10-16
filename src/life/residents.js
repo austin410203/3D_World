@@ -16,7 +16,7 @@ const wpick = (w) => { let t = 0; for (const k in w) t += w[k]; let r = Math.ran
 // Minecraft-style blocky person (32 "pixels" tall = 1.8 m)
 const PX = 1.8 / 32;
 const box = (w, h, d, x, y, z, r = 1, g = 1, b = 1) => tint(new THREE.BoxGeometry(w * PX, h * PX, d * PX).translate(x * PX, y * PX, z * PX), r, g, b);
-function humanParts() {
+export function humanParts() {
   const torso = merge(box(8, 12, 4, 0, 18, 0), box(8.2, 1, 4.2, 0, 12.5, 0, 0.45, 0.32, 0.2));
   const head = merge(box(8, 8, 8, 0, 28, 0));
   const face = merge(

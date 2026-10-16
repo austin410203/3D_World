@@ -32,8 +32,30 @@ An open-world road trip across the USA built with three.js. You drive or walk 10
 | V / K / L | god mode / call (and repair) the car / toggle residents & wildlife | |
 | E / Q / left click | talk / interact · switch weapon · attack | |
 | F | mount an animal (taming needed) | |
+| I / T / [ ] | isometric camera · cycle style · rotate isometric view | |
 | G / N / H | graphics quality / sound / help | |
 
+
+
+## Three visual styles (one world, switchable)
+All three styles share the same 106 km world, gameplay, characters and data; only the rendering layer changes (`src/theme.js`).
+
+| Style | URL | Look |
+|---|---|---|
+| Classic | `?style=classic` | The original realistic look |
+| Sketch | `?style=sketch` | White-paper line art: graphite outlines (depth + normal edge post-process), dashed survey grid and elevation contours on the ground, white buildings with pastel roofs |
+| Cozy | `?style=cozy` | Warm isometric city-builder: brick, mustard, teal and cream facades with framed windows; dark flat roofs with cream parapets, AC units, stair huts, New York water tanks and fire escapes |
+
+- Pick a style on the start screen, press **T** to cycle styles in-game, or use the `?style=` URL parameter. The choice is remembered.
+- **I** toggles the isometric city-builder camera: wheel to zoom, drag or `[` `]` to rotate. In god mode, WASD pans it.
+- In all three styles, every city intersection gets zebra crossings, traffic lights, street lamps, parked cars and benches (`src/world/decor.js`). They're generated from the city street grids and the building collision boxes.
+- **Asset packs**: the "⬇ export this style's asset pack (GLB)" button in the god-mode panel downloads `crosscountry_<style>_kit.glb`. It contains 48 assets with the style's colours baked in, ready to drop into other games:
+  - 6 building modules
+  - Rooftop and street furniture kit
+  - 15 plants and rocks
+  - Car, hero and resident
+  - 15 animals
+- Local dev: `python tools/devserver.py` (a no-cache static server).
 
 ## God mode and wildlife
 - **V god mode**: free flight over the whole world. WASD to fly, E/Space to climb, Q/C to descend, Shift to speed up, mouse wheel to change speed, drag the mouse to turn. Click any of the 14 places in the list on the left (Golden Gate, Grand Canyon, Silver Lake, Gateway Arch, Lighthouse Point, Liberty Island, New York midtown, and more) to fly there along a smooth arc. Number keys fly you to each stage. Press V again to land right where you are, and press **K** to call the car to you.

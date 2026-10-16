@@ -1,5 +1,6 @@
 // road.js - the transcontinental highway ribbon (4 lanes, 16 m) built from the exported route profile
 import * as THREE from 'three';
+import { graded } from '../theme.js';
 
 function markingTexture(renderer) {
   const W = 512, Hh = 1024, c = document.createElement('canvas'); c.width = W; c.height = Hh;
@@ -27,8 +28,8 @@ function markingTexture(renderer) {
 }
 
 export function buildRoad(scene, d, renderer) {
-  const mat = new THREE.MeshStandardMaterial({ map: markingTexture(renderer), roughness: 0.82, metalness: 0,
-                                               polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+  const mat = graded(new THREE.MeshStandardMaterial({ map: markingTexture(renderer), roughness: 0.82, metalness: 0,
+                                               polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
   const n = d.rx.length, PIECE = 400;
   const offs = [-9.6, -8, 8, 9.6], dz = [-1.4, 0, 0, -1.4], us = [0, 0, 1, 1];
   const group = new THREE.Group();

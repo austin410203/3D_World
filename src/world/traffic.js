@@ -1,5 +1,6 @@
 // traffic.js - cars cruising both directions of the highway around the player (instanced)
 import * as THREE from 'three';
+import { graded } from '../theme.js';
 import { trafficCarGeometry } from '../actors/carModel.js';
 import { pixelNoise } from '../pixel.js';
 
@@ -12,7 +13,7 @@ export class Traffic {
   constructor(scene, world, n = 70) {
     this.w = world; this.n = n;
     this.mesh = new THREE.InstancedMesh(trafficCarGeometry(),
-      new THREE.MeshStandardMaterial({ vertexColors: true, map: pixelNoise(16, 0.8, 1, 11), roughness: 0.45, metalness: 0.15 }), n);
+      graded(new THREE.MeshStandardMaterial({ vertexColors: true, map: pixelNoise(16, 0.8, 1, 11), roughness: 0.45, metalness: 0.15 })), n);
     this.mesh.castShadow = true; this.mesh.frustumCulled = false;
     scene.add(this.mesh);
     this.cars = []; this.blockers = [];

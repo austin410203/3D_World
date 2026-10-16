@@ -1,5 +1,6 @@
 // vegetation.js - 618k trees / cacti / shrubs / rocks / wheat as streamed InstancedMesh cells around the player
 import * as THREE from 'three';
+import { graded } from '../theme.js';
 import { ASSET, fetchBin, fetchJSON } from '../data.js';
 import { decodeEntry } from './static.js';
 
@@ -12,7 +13,7 @@ export class Vegetation {
   async init() {
     const [pIdx, pBuf, vIdx, vBuf] = await Promise.all([
       fetchJSON(ASSET + 'protos.json'), fetchBin(ASSET + 'protos.bin.gz'), fetchJSON(ASSET + 'veg.json'), fetchBin(ASSET + 'veg.bin.gz')]);
-    this.mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    this.mat = graded(new THREE.MeshLambertMaterial({ vertexColors: true }));
     this.geoms = {};
     for (const e of pIdx) {
       const g = decodeEntry(pBuf, e);

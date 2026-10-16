@@ -5,7 +5,7 @@ import { setupSky } from './world/sky.js';
 import { Terrain } from './world/terrain.js';
 import { buildRoad } from './world/road.js';
 import { Water } from './world/water.js';
-import { StaticWorld } from './world/static.js';
+import { StaticWorld, setHeightTexture } from './world/static.js';
 import { Vegetation } from './world/vegetation.js';
 import { Traffic } from './world/traffic.js';
 import { Car } from './actors/car.js';
@@ -21,6 +21,11 @@ import { Particles } from './particles.js';
 import { Combat, WEAPONS } from './combat.js';
 import { Ride } from './actors/ride.js';
 import { Quests } from './quests.js';
+import { STYLE, T, graded } from './theme.js';
+import { OutlinePost } from './post.js';
+import { IsoCam } from './iso.js';
+import { Decor } from './world/decor.js';
+import { exportKit } from './kit.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
@@ -28,7 +33,12 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicD
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
+renderer.toneMapping = T.toneMapping; renderer.toneMappingExposure = T.exposure;
+document.body.classList.add('theme-' + STYLE);
+for (const b of document.querySelectorAll('#styles button')) {
+  b.classList.toggle('on', b.dataset.s === STYLE);
+  b.onclick = () => { if (b.dataset.s !== STYLE) location.search = '?style=' + b.dataset.s; };
+}
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.25, 90000);
 addEventListener('resize', () => {
@@ -47,6 +57,7 @@ async function main() {
   const terrain = new Terrain(scene, world, renderer); await terrain.init(progress);
   buildRoad(scene, world, renderer); progress('公路');
   const water = new Water(scene); await water.init(); progress('水域');
+  setHeightTexture(world);
   const statics = new StaticWorld(scene); await statics.init();
   const veg = new Vegetation(scene, world); await veg.init(); progress('植被');
 
@@ -126,6 +137,20 @@ async function main() {
   const combat = new Combat(scene, world, person);
   const ride = new Ride(world, wildlife, person);
   const quests = new Quests(scene, world, residents, wildlife, traffic, particles);
+  const decor = new Decor(scene, world);
+  const iso = new IsoCam(camera, world);
+  const post = T.outline ? new OutlinePost(renderer, scene, camera) : null;
+  // style grade on the hero, car and weapons (materials created before the theme hook)
+  const seen = new Set();
+  for (const root of [person.mesh, car.mesh]) root.traverse((o) => { if (o.material && !seen.has(o.material)) { seen.add(o.material); graded(o.material); o.material.needsUpdate = true; } });
+  decor.parkAt = (x, y) => residents.parkAt(x, y);
+  Object.assign(window.__game, { decor, iso, post });
+  const camYaw = () => (iso.active ? iso.yaw : rig.yaw);
+  $('export-kit').onclick = async () => {
+    hud.toast('正在產生 ' + T.name + ' 風格資產包…', 3);
+    try { const n = await exportKit(veg.geoms); hud.toast(`已下載 crosscountry_${STYLE}_kit.glb(${n} 個資產)`, 5); }
+    catch (e) { console.error(e); hud.toast('匯出失敗:' + e.message, 5); }
+  };
   Object.assign(window.__game, { combat, ride, quests, particles });
   let deadT = 0, deadReason = '';
   const aim = new THREE.Vector3();
@@ -158,7 +183,7 @@ async function main() {
   function attackInput() {
     if (!(input.hit('Mouse0') || input.hit('KeyX'))) return;
     camera.getWorldDirection(aim); aim.y += 0.04; aim.normalize();
-    if (mode === 'foot') person.yaw = rig.yaw + Math.PI;           // face where the camera looks
+    if (mode === 'foot') person.yaw = camYaw() + Math.PI;           // face where the camera looks
     combat.attack(person.yaw, aim, gatherTargets());
   }
   let targetsCache = null;
@@ -186,15 +211,22 @@ async function main() {
       else if (mode === 'car' && car.speedKmh > 10) hud.toast('先停車再進入上帝視角');
       else { if (ride.active) ride.dismount(); enterGod(); }
     }
+    if (input.hit('KeyI')) {
+      iso.active = !iso.active; iso.init = false;
+      if (iso.active) { iso.target.copy(mode === 'god' ? camera.position : mode === 'car' ? car.pos : person.pos); iso.target.y = Math.max(0, world.H(iso.target.x, -iso.target.z)); input.lockEnabled = false; document.exitPointerLock?.(); }
+      else { input.lockEnabled = mode !== 'god'; rig.init = false; if (mode === 'god') god.enter(iso.target); }
+      hud.toast(iso.active ? '等角視角:滾輪縮放 · 拖曳旋轉 · [ ] 轉 90° · I 返回' : '一般視角', 3);
+    }
+    if (input.hit('KeyT')) { const order = ['classic', 'sketch', 'cozy']; location.search = '?style=' + order[(order.indexOf(STYLE) + 1) % 3]; }
     if (input.hit('KeyL')) { residents.enabled = wildlife.enabled = !residents.enabled; hud.toast(residents.enabled ? '居民 / 動物:開' : '居民 / 動物:關'); }
 
     if (mode === 'dead') {
       deadT -= dt; person.sync(dt);
       if (deadT <= 0) respawn();
-      rig.updateFoot(dt, person, input);
+      if (!iso.active) rig.updateFoot(dt, person, input);
     } else if (mode === 'god') {
       const anyKey = input.down('KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyQ', 'Space');
-      god.update(dt, input, anyKey);
+      if (!iso.active) god.update(dt, input, anyKey);
       $('god-alt').textContent = `高度 ${Math.round(god.altitude())} m · 速度 ${Math.round(god.vel.length() * 3.6)} km/h`;
     } else if (mode === 'foot') {
       if (input.hit('KeyK')) {   // call (and repair) the car: park it beside the player
@@ -204,7 +236,7 @@ async function main() {
       }
       if (input.hit('KeyQ')) { combat.cycle(); hud.toast(`${combat.weapon.icon} ${combat.weapon.name}`, 1); }
       attackInput();
-      person.update(dt, mv, rig.yaw);
+      person.update(dt, mv, camYaw());
       for (const e of person.events) if (e.type === 'fall' && e.v > 13) combat.damage(Math.round((e.v - 13) * 1.3), '摔死了');
       person.events.length = 0;
       const dCar = Math.hypot(person.pos.x - car.pos.x, person.pos.z - car.pos.z);
@@ -219,7 +251,7 @@ async function main() {
         }
       }
       if (input.hit('KeyR')) { const s = world.nearestRouteS(person.pos.x, -person.pos.z), r = world.routeAt(s); person.place(r.x - r.ty * -12, r.y + r.tx * -12, 0); }
-      rig.updateFoot(dt, person, input);
+      if (!iso.active) rig.updateFoot(dt, person, input);
     } else if (mode === 'ride') {
       if (input.hit('KeyQ')) { combat.cycle(); hud.toast(`${combat.weapon.icon} ${combat.weapon.name}`, 1); }
       attackInput();
@@ -233,7 +265,7 @@ async function main() {
         ride.events.length = 0;
         if (!ride.active) mode = 'foot';
       }
-      rig.updateFoot(dt, person, input);
+      if (!iso.active) rig.updateFoot(dt, person, input);
     } else {
       if (input.hit('KeyE')) car.shift(1);
       if (input.hit('KeyQ')) car.shift(-1);
@@ -272,11 +304,11 @@ async function main() {
         const ep = car.mesh.userData.engine.getWorldPosition(new THREE.Vector3());
         particles.emit(car.dead && Math.random() < 0.5 ? 'fire' : 'smoke', ep);
       }
-      rig.updateCar(dt, car, input);
+      if (!iso.active) rig.updateCar(dt, car, input);
     }
 
     // ---- traffic (+ simple collisions with the player)
-    const focus = mode === 'god' ? camera.position : mode === 'car' ? car.pos : person.pos;
+    const focus = mode === 'god' ? (iso.active ? iso.target : camera.position) : mode === 'car' ? car.pos : person.pos;
     const pBX = focus.x, pBY = -focus.z;
     const routeS = world.nearestRouteS(pBX, pBY);
     traffic.update(dt, pBX, pBY, routeS, mode === 'car' ? { x: pBX, y: pBY } : null);
@@ -331,6 +363,8 @@ async function main() {
     if (tTerrain <= 0) { terrain.update(camera.position.x, -camera.position.z, Math.max(0, camera.position.y - world.H(camera.position.x, -camera.position.z))); tTerrain = 0.2; }
     if (tStatic <= 0) { statics.update(pBX); tStatic = 1.0; }
     veg.update(pBX, pBY);
+    decor.update(pBX, pBY);
+    if (iso.active) { const fc = mode === 'god' ? null : new THREE.Vector3(focus.x, focus.y + 1, focus.z); iso.update(dt, input, fc, mode === 'god'); }
     sky.follow(mode === 'god' ? new THREE.Vector3(p.x, Math.max(0, world.H(p.x, -p.z)), p.z) : p);
     water.update(t);
     audio.update(car, mode === 'car');
@@ -350,7 +384,7 @@ async function main() {
     hud.survival({ mode, combat, weapons: WEAPONS, emeralds: quests.emeralds, tracker: quests.tracker(pBX, pBY), dialog: quests.dialog, pbar,
                    dead: mode === 'dead' ? deadReason || '你倒下了' : null });
     input.endFrame();
-    if (draw) renderer.render(scene, camera);
+    if (draw) { if (post) post.render(); else renderer.render(scene, camera); }
   }
   function frame() { requestAnimationFrame(frame); const dt = Math.min(clock.getDelta(), 0.05); if (!window.__game.paused) tick(dt); }
   window.__game.tick = (n = 1, dt = 1 / 60) => { for (let i = 0; i < n; i++) tick(dt, i === n - 1); };
